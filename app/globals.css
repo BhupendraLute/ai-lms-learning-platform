@@ -1,26 +1,118 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: var(--font-playfair), Georgia, Cambria, "Times New Roman", Times, serif;
+
+  --color-primary-500: #F97316;
+  --color-primary-400: #FB923C;
+  --color-primary-300: #FDBA74;
+  --color-primary-200: #FED7AA;
+  --color-primary-100: #FFEEE5;
+
+  --color-neutral-900: #0F172A;
+  --color-neutral-700: #334155;
+  --color-neutral-500: #64748B;
+  --color-neutral-300: #CBD5E1;
+  --color-neutral-200: #E2E8F0;
+  --color-neutral-100: #F1F5F9;
+  --color-neutral-50: #FAFAFC;
+  --color-white: #FFFFFF;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 24px -4px rgba(15, 23, 42, 0.10);
+  --shadow-xl: 0 20px 40px -8px rgba(15, 23, 42, 0.12);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --primary-500: #F97316;
+  --primary-400: #FB923C;
+  --primary-300: #FDBA74;
+  --primary-200: #FED7AA;
+  --primary-100: #FFEEE5;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --neutral-900: #0F172A;
+  --neutral-700: #334155;
+  --neutral-500: #64748B;
+  --neutral-300: #CBD5E1;
+  --neutral-200: #E2E8F0;
+  --neutral-100: #F1F5F9;
+  --neutral-50: #FAFAFC;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--neutral-50);
+  color: var(--neutral-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* AI-LMS Typography Scale Utilities */
+.type-display-1 {
+  font-family: var(--font-serif);
+  font-size: 48px;
+  line-height: 56px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.type-display-2 {
+  font-family: var(--font-serif);
+  font-size: 36px;
+  line-height: 44px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.type-heading-1 {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.type-heading-2 {
+  font-family: var(--font-sans);
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.type-heading-3 {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 500;
+}
+
+.type-body-large {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+.type-body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.type-small {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
 }
