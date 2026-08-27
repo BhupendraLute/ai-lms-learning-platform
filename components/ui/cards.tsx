@@ -1,5 +1,5 @@
 import React from "react";
-import { BarChart2, Clock, BookOpen, Play, ExternalLink, FileText } from "lucide-react";
+import { BarChart2, Clock, Play, ExternalLink, FileText } from "lucide-react";
 import { Badge } from "./badge";
 import { cn } from "@/lib/utils";
 
@@ -35,19 +35,19 @@ export function CourseCard({
       {...props}
     >
       <div>
-        <div className="flex items-center gap-4 mb-4">
+        <div className="mb-5">
           {icon ? (
             icon
           ) : (
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[10px] bg-[#0F172A] text-white font-bold text-xl shadow-sm">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] bg-[#0F172A] text-white font-bold text-xl shadow-sm">
               {iconText}
             </div>
           )}
-          <h3 className="type-heading-2 text-[#0F172A] group-hover:text-[#F97316] transition-colors line-clamp-1">
-            {title}
-          </h3>
         </div>
-        <p className="type-body text-[#64748B] mb-6 line-clamp-2">
+        <h3 className="type-heading-2 text-[#0F172A] font-bold group-hover:text-[#F97316] transition-colors mb-2 line-clamp-1">
+          {title}
+        </h3>
+        <p className="type-body text-[#64748B] mb-6 line-clamp-2 text-sm leading-relaxed">
           {description}
         </p>
       </div>
@@ -55,19 +55,19 @@ export function CourseCard({
       <div className="flex items-center gap-5 pt-4 border-t border-[#F1F5F9] text-xs text-[#64748B]">
         {level && (
           <div className="flex items-center gap-1.5 font-medium">
-            <BarChart2 className="w-4 h-4 text-[#64748B]" strokeWidth={2} />
+            <BarChart2 className="w-3.5 h-3.5 text-[#64748B]" strokeWidth={2} />
             <span>{level}</span>
           </div>
         )}
         {duration && (
           <div className="flex items-center gap-1.5 font-medium">
-            <Clock className="w-4 h-4 text-[#64748B]" strokeWidth={2} />
+            <Clock className="w-3.5 h-3.5 text-[#64748B]" strokeWidth={2} />
             <span>{duration}</span>
           </div>
         )}
         {moduleCount && (
           <div className="flex items-center gap-1.5 font-medium">
-            <BookOpen className="w-4 h-4 text-[#64748B]" strokeWidth={2} />
+            <FileText className="w-3.5 h-3.5 text-[#64748B]" strokeWidth={2} />
             <span>{typeof moduleCount === "number" ? `${moduleCount} modules` : moduleCount}</span>
           </div>
         )}
