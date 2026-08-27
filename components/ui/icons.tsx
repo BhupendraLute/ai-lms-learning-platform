@@ -25,6 +25,8 @@ import {
   Loader2,
   Star,
   BookOpen,
+  Menu,
+  X,
 } from "lucide-react";
 
 export interface IconProps extends React.SVGProps<SVGSVGElement> {
@@ -155,5 +157,7 @@ export {
   Loader2,
   Star,
   BookOpen,
+  Menu,
+  X,
 };
 
