@@ -7,6 +7,7 @@ export interface ProgressBarProps extends React.HTMLAttributes<HTMLDivElement> {
   showLabel?: boolean;
   labelPosition?: "right" | "top";
   customLabel?: string;
+  label?: string;
 }
 
 export function ProgressBar({
@@ -15,12 +16,13 @@ export function ProgressBar({
   showLabel = true,
   labelPosition = "right",
   customLabel,
+  label,
   className,
   ...props
 }: ProgressBarProps) {
   const clampedValue = Math.min(Math.max(value, 0), max);
   const percentage = Math.round((clampedValue / max) * 100);
-  const labelText = customLabel || `${percentage}% complete`;
+  const labelText = customLabel || label || `${percentage}% complete`;
 
   return (
     <div

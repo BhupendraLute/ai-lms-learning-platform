@@ -1,10 +1,12 @@
 import React from "react";
+import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface BreadcrumbItem {
   label: string;
   href?: string;
+  active?: boolean;
 }
 
 export interface BreadcrumbsProps extends React.HTMLAttributes<HTMLElement> {
@@ -20,7 +22,7 @@ export function Breadcrumbs({ items, className, ...props }: BreadcrumbsProps) {
     >
       <ol className="flex items-center space-x-2">
         {items.map((item, index) => {
-          const isLast = index === items.length - 1;
+          const isLast = index === items.length - 1 || item.active;
           return (
             <li key={index} className="flex items-center">
               {index > 0 && (
@@ -32,12 +34,12 @@ export function Breadcrumbs({ items, className, ...props }: BreadcrumbsProps) {
               {isLast ? (
                 <span className="font-medium text-[#0F172A]">{item.label}</span>
               ) : item.href ? (
-                <a
+                <Link
                   href={item.href}
                   className="font-normal text-[#64748B] hover:text-[#0F172A] transition-colors"
                 >
                   {item.label}
-                </a>
+                </Link>
               ) : (
                 <span className="font-normal text-[#64748B]">{item.label}</span>
               )}
