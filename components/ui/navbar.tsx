@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
 import { AiLmsLogo, Bell, Menu, X } from "./icons";
 import { cn } from "@/lib/utils";
 
@@ -30,9 +30,7 @@ export function Navbar({
   ],
   showNotifications = true,
   showUser = true,
-  userAvatarUrl = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
   onNotificationClick,
-  onUserClick,
   className,
   ...props
 }: NavbarProps) {
@@ -78,36 +76,54 @@ export function Navbar({
         </div>
 
         {/* Right Header Controls */}
-        <div className="flex items-center gap-3 sm:gap-5">
-          {showNotifications && (
-            <button
-              type="button"
-              onClick={onNotificationClick}
-              className="relative p-1.5 text-[#334155] hover:text-[#0F172A] transition-colors rounded-full hover:bg-[#F1F5F9] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FB923C]"
-              aria-label="Notifications"
-            >
-              <Bell className="w-5 h-5 stroke-[1.75]" />
-            </button>
-          )}
+        <div className="flex items-center gap-3 sm:gap-4">
+          <Show when="signed-out">
+            <div className="hidden sm:flex items-center gap-2">
+              <SignInButton mode="modal">
+                <button
+                  type="button"
+                  className="text-sm font-medium text-[#334155] hover:text-[#0F172A] px-3 py-1.5 rounded-lg hover:bg-[#F1F5F9] transition-colors"
+                >
+                  Sign in
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button
+                  type="button"
+                  className="text-sm font-medium bg-[#F97316] text-white hover:bg-[#EA580C] px-3.5 py-1.5 rounded-[10px] shadow-sm transition-all hover:shadow hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  Sign up
+                </button>
+              </SignUpButton>
+            </div>
+          </Show>
 
-          {showUser && (
-            <button
-              type="button"
-              onClick={onUserClick}
-              className="flex items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FB923C] focus-visible:ring-offset-2 overflow-hidden ring-1 ring-[#E2E8F0]"
-              aria-label="User Profile"
-            >
-              <Image
-                src={userAvatarUrl}
-                alt="User Profile"
-                width={32}
-                height={32}
-                className="w-8 h-8 rounded-full object-cover"
-                unoptimized
-                priority
-              />
-            </button>
-          )}
+          <Show when="signed-in">
+            <div className="flex items-center gap-3 sm:gap-4">
+              {showNotifications && (
+                <button
+                  type="button"
+                  onClick={onNotificationClick}
+                  className="relative p-1.5 text-[#334155] hover:text-[#0F172A] transition-colors rounded-full hover:bg-[#F1F5F9] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FB923C]"
+                  aria-label="Notifications"
+                >
+                  <Bell className="w-5 h-5 stroke-[1.75]" />
+                </button>
+              )}
+
+              {showUser && (
+                <div className="flex items-center">
+                  <UserButton
+                    appearance={{
+                      elements: {
+                        avatarBox: "w-8 h-8 rounded-full ring-1 ring-[#E2E8F0]",
+                      },
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </Show>
 
           {/* Mobile Menu Trigger Button */}
           <button
@@ -145,10 +161,35 @@ export function Navbar({
               );
             })}
           </nav>
+
+          <div className="pt-3 mt-2 border-t border-[#E2E8F0] flex flex-col gap-2">
+            <Show when="signed-out">
+              <SignInButton mode="modal">
+                <button
+                  type="button"
+                  className="w-full text-center px-3 py-2 rounded-lg text-sm font-medium text-[#334155] border border-[#E2E8F0] hover:bg-[#F1F5F9] transition-colors"
+                >
+                  Sign in
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button
+                  type="button"
+                  className="w-full text-center px-3 py-2 rounded-lg text-sm font-medium bg-[#F97316] text-white hover:bg-[#EA580C] shadow-sm transition-colors"
+                >
+                  Sign up
+                </button>
+              </SignUpButton>
+            </Show>
+            <Show when="signed-in">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-sm font-medium text-[#334155]">Signed in as:</span>
+                <UserButton />
+              </div>
+            </Show>
+          </div>
         </div>
       )}
     </header>
   );
 }
-
-
