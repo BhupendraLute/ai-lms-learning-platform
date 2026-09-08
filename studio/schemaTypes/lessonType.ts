@@ -66,6 +66,7 @@ export const lessonType = defineType({
       type: 'number',
       description: 'Number of students who have completed or viewed this lesson',
       initialValue: 0,
+      validation: (rule) => rule.integer().min(0).error('Student count must be a non-negative integer'),
     }),
     defineField({
       name: 'keyPoints',

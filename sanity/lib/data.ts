@@ -27,7 +27,7 @@ export async function getAllCourses(): Promise<CourseSummary[]> {
     const { data } = await sanityFetch({
       query: ALL_COURSES_QUERY,
     })
-    return (data as CourseSummary[]) || []
+    return (data as unknown as CourseSummary[]) || []
   } catch (error) {
     console.error('Error fetching all courses from Sanity:', error)
     return []
@@ -42,7 +42,7 @@ export async function getPopularCourses(): Promise<CourseSummary[]> {
     const { data } = await sanityFetch({
       query: POPULAR_COURSES_QUERY,
     })
-    return (data as CourseSummary[]) || []
+    return (data as unknown as CourseSummary[]) || []
   } catch (error) {
     console.error('Error fetching popular courses from Sanity:', error)
     return []
@@ -58,7 +58,7 @@ export async function getCourseBySlug(slug: string): Promise<Course | null> {
       query: COURSE_BY_SLUG_QUERY,
       params: { slug },
     })
-    return (data as Course) || null
+    return (data as unknown as Course) || null
   } catch (error) {
     console.error(`Error fetching course "${slug}" from Sanity:`, error)
     return null
@@ -73,7 +73,7 @@ export async function getCourseSlugs(): Promise<string[]> {
     const { data } = await sanityFetch({
       query: COURSE_SLUGS_QUERY,
     })
-    return (data as string[]) || []
+    return (data as unknown as string[]) || []
   } catch (error) {
     console.error('Error fetching course slugs from Sanity:', error)
     return []
@@ -94,12 +94,18 @@ export async function getLessonBySlug(
 
     if (!data) return null
 
-    const lessonData = data as LessonDetailWithContext
+    const lessonData = data as unknown as LessonDetailWithContext
 
     // Calculate module index, lesson index, previous lesson, and next lesson
     if (lessonData.course?.modules) {
       const modules = lessonData.course.modules
-      const flatLessons: { title: string; slug: { current: string }; moduleTitle: string; moduleIdx: number; lessonIdx: number }[] = []
+      const flatLessons: {
+        title: string
+        slug: { current: string }
+        moduleTitle: string
+        moduleIdx: number
+        lessonIdx: number
+      }[] = []
 
       modules.forEach((mod, modIdx) => {
         if (Array.isArray(mod.lessons)) {
@@ -156,7 +162,7 @@ export async function getLessonSlugs(): Promise<string[]> {
     const { data } = await sanityFetch({
       query: LESSON_SLUGS_QUERY,
     })
-    return (data as string[]) || []
+    return (data as unknown as string[]) || []
   } catch (error) {
     console.error('Error fetching lesson slugs from Sanity:', error)
     return []
@@ -171,7 +177,7 @@ export async function getAllCategories(): Promise<Category[]> {
     const { data } = await sanityFetch({
       query: ALL_CATEGORIES_QUERY,
     })
-    return (data as Category[]) || []
+    return (data as unknown as Category[]) || []
   } catch (error) {
     console.error('Error fetching categories from Sanity:', error)
     return []
@@ -187,7 +193,7 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
       query: CATEGORY_BY_SLUG_QUERY,
       params: { slug },
     })
-    return (data as Category) || null
+    return (data as unknown as Category) || null
   } catch (error) {
     console.error(`Error fetching category "${slug}" from Sanity:`, error)
     return null
@@ -202,7 +208,7 @@ export async function getAllInstructors(): Promise<Instructor[]> {
     const { data } = await sanityFetch({
       query: ALL_INSTRUCTORS_QUERY,
     })
-    return (data as Instructor[]) || []
+    return (data as unknown as Instructor[]) || []
   } catch (error) {
     console.error('Error fetching instructors from Sanity:', error)
     return []
@@ -218,7 +224,7 @@ export async function getInstructorBySlug(slug: string): Promise<Instructor | nu
       query: INSTRUCTOR_BY_SLUG_QUERY,
       params: { slug },
     })
-    return (data as Instructor) || null
+    return (data as unknown as Instructor) || null
   } catch (error) {
     console.error(`Error fetching instructor "${slug}" from Sanity:`, error)
     return null

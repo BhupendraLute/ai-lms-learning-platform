@@ -66,6 +66,7 @@ export const courseType = defineType({
       type: 'number',
       description: 'Course price in USD (leave 0 for free courses)',
       initialValue: 0,
+      validation: (rule) => rule.min(0).error('Course price must be 0 or greater'),
     }),
     defineField({
       name: 'popular',
@@ -80,6 +81,7 @@ export const courseType = defineType({
       type: 'number',
       description: 'Display count of enrolled or active students',
       initialValue: 0,
+      validation: (rule) => rule.integer().min(0).error('Student count must be a non-negative integer'),
     }),
     defineField({
       name: 'instructor',

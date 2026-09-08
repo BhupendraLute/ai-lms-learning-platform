@@ -93,13 +93,13 @@ Implement the Sanity content model schemas (`course`, `module`, `lesson`, `instr
 ## Checks to Run
 1. `npx tsc --noEmit` - Verify full TypeScript type safety across schemas, queries, and data layer.
 2. `npm run lint` - Verify no linting violations.
-3. `npm run build` - Ensure Next.js build succeeds with new Sanity schemas, Studio route, and server modules.
+3. `npm run build` - Ensure Next.js build succeeds with new Sanity schemas and server modules.
 
 ---
 
 ## Exact Manual Test Steps
-1. Run `npm run dev` to start the local Next.js server.
-2. Open `http://localhost:3000/studio` in the browser to load Sanity Studio.
+1. Run `npm run studio:dev` to start the standalone Sanity Studio.
+2. Open `http://localhost:3333` in the browser to load Sanity Studio.
 3. Verify that Courses, Lessons, Instructors, and Categories appear in the Studio sidebar.
 4. Verify creating a Category, Instructor, Lesson, and Course (with embedded Modules and references to Lessons).
 5. Verify that all fields (coverImage, learningOutcomes, proTip, notes Portable Text, resources) display appropriately in the Studio forms.
