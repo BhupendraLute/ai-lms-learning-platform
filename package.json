@@ -9,7 +9,9 @@
     "lint": "eslint",
     "studio:dev": "npm --prefix studio run dev",
     "studio:build": "npm --prefix studio run build",
-    "studio:typegen": "npm --prefix studio run typegen"
+    "studio:typegen": "npm --prefix studio run typegen",
+    "studio:seed": "node studio/scripts/seed/seed.mjs",
+    "seed": "node studio/scripts/seed/seed.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.8.4",
