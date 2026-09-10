@@ -9,7 +9,8 @@
     "start": "sanity start",
     "build": "sanity build",
     "deploy": "sanity deploy",
-    "typegen": "sanity schemas extract && sanity typegen generate"
+    "typegen": "sanity schemas extract && sanity typegen generate",
+    "seed": "node scripts/seed/seed.mjs"
   },
   "dependencies": {
     "@sanity/vision": "^5.31.2",
