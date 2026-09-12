@@ -1,6 +1,4 @@
-"use client";
-
-import React, { useRef, useEffect } from "react";
+import React from "react";
 import Link from "next/link";
 import {
   Navbar,
@@ -8,26 +6,106 @@ import {
   NextjsIcon,
   DockerIcon,
   TypeScriptIcon,
-  Search,
   ArrowRight,
   Star,
 } from "@/components/ui";
+import { HeroSearchBar } from "@/components/home/hero-search-bar";
+import { getAllCourses } from "@/sanity/lib/data";
+import { urlForImage } from "@/sanity/lib/image";
 
-export default function HomePage() {
-  const searchInputRef = useRef<HTMLInputElement>(null);
+interface CourseDisplayItem {
+  slug: string;
+  title: string;
+  description: string;
+  level: string;
+  duration: string;
+  moduleCount: string;
+  imageUrl?: string;
+  icon?: React.ReactNode;
+}
 
-  // ⌘K or Ctrl+K shortcut listener to focus search input
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
-    };
+function getCourseIcon(slug: string, title: string) {
+  const lower = (slug + " " + title).toLowerCase();
+  if (lower.includes("nextjs") || lower.includes("next.js")) {
+    return <NextjsIcon size={48} />;
+  }
+  if (lower.includes("docker") || lower.includes("devops") || lower.includes("kubernetes")) {
+    return <DockerIcon size={48} />;
+  }
+  if (lower.includes("typescript") || lower.includes("type")) {
+    return <TypeScriptIcon size={48} />;
+  }
+  return <NextjsIcon size={48} />;
+}
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+// Fallback courses if Sanity is loading or offline
+const fallbackCourses: CourseDisplayItem[] = [
+  {
+    slug: "nextjs-app-router-in-depth",
+    title: "Next.js for Production",
+    description: "Build scalable, high-performance web applications with Next.js.",
+    level: "Intermediate",
+    duration: "18h 24m",
+    moduleCount: "12 modules",
+    icon: <NextjsIcon size={48} />,
+  },
+  {
+    slug: "devops-with-docker-and-kubernetes",
+    title: "Docker Essentials",
+    description: "Containerize applications and streamline your development workflow.",
+    level: "Beginner",
+    duration: "10h 12m",
+    moduleCount: "8 modules",
+    icon: <DockerIcon size={48} />,
+  },
+  {
+    slug: "typescript-for-application-developers",
+    title: "TypeScript Deep Dive",
+    description: "Go beyond the basics and write safer, more expressive code.",
+    level: "Intermediate",
+    duration: "14h 36m",
+    moduleCount: "10 modules",
+    icon: <TypeScriptIcon size={48} />,
+  },
+];
+
+export default async function HomePage() {
+  const sanityCourses = await getAllCourses();
+
+  // Pick top 3 featured/popular courses from Sanity
+  let displayCourses: CourseDisplayItem[] = fallbackCourses;
+
+  if (sanityCourses && sanityCourses.length > 0) {
+    // Prefer Next.js, Docker, and TypeScript courses if present, or first 3 courses
+    const nextCourse = sanityCourses.find((c) =>
+      c.title?.toLowerCase().includes("next") || c.slug?.current?.includes("next")
+    );
+    const dockerCourse = sanityCourses.find((c) =>
+      c.title?.toLowerCase().includes("docker") || c.slug?.current?.includes("docker") || c.slug?.current?.includes("devops")
+    );
+    const tsCourse = sanityCourses.find((c) =>
+      c.title?.toLowerCase().includes("typescript") || c.slug?.current?.includes("typescript")
+    );
+
+    const curated = [nextCourse, dockerCourse, tsCourse].filter(Boolean);
+    const remaining = sanityCourses.filter((c) => !curated.includes(c));
+    const finalCourseSelection = [...curated, ...remaining].slice(0, 3);
+
+    displayCourses = finalCourseSelection.map((c) => {
+      const slugStr = typeof c!.slug === "object" ? c!.slug.current : c!.slug;
+      const imgUrl = urlForImage(c!.coverImage);
+      return {
+        slug: slugStr,
+        title: c!.title,
+        description: c!.summary,
+        level: c!.level || "Intermediate",
+        duration: c!.duration || "18h 24m",
+        moduleCount: c!.moduleCount ? `${c!.moduleCount} modules` : "4 modules",
+        imageUrl: imgUrl,
+        icon: !imgUrl ? getCourseIcon(slugStr, c!.title) : undefined,
+      };
+    });
+  }
 
   return (
     <div className="min-h-screen bg-[#FAFAFC] text-[#0F172A] flex flex-col justify-between overflow-x-hidden relative">
@@ -70,25 +148,8 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {/* Large Hero Search Input */}
-          <div className="w-full max-w-[680px] mx-auto mt-8">
-            <div className="relative flex items-center w-full rounded-[14px] border border-[#E2E8F0] bg-white shadow-sm transition-all duration-200 hover:border-[#CBD5E1] focus-within:border-[#FB923C] focus-within:ring-2 focus-within:ring-[#FB923C]/20">
-              <div className="absolute left-4 flex items-center pointer-events-none text-[#64748B]">
-                <Search className="w-5 h-5 text-[#64748B]" strokeWidth={2} />
-              </div>
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Ask anything about your learning..."
-                className="h-[52px] w-full rounded-[14px] bg-transparent pl-12 pr-16 text-sm md:text-[15px] text-[#0F172A] placeholder:text-[#64748B] outline-none"
-              />
-              <div className="absolute right-3.5 flex items-center pointer-events-none">
-                <kbd className="inline-flex items-center gap-1 rounded-[6px] border border-[#E2E8F0] bg-[#F1F5F9] px-2 py-1 text-xs font-medium text-[#64748B] select-none">
-                  <span className="text-xs">⌘</span> K
-                </kbd>
-              </div>
-            </div>
-          </div>
+          {/* Large Hero Search Input with ⌘K keyboard shortcut */}
+          <HeroSearchBar />
         </section>
 
         {/* All Courses Section */}
@@ -109,41 +170,20 @@ export default function HomePage() {
 
           {/* 3 Course Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Link href="/courses/nextjs-for-production" className="block">
-              <CourseCard
-                icon={<NextjsIcon size={48} />}
-                title="Next.js for Production"
-                description="Build scalable, high-performance web applications with Next.js."
-                level="Intermediate"
-                duration="18h 24m"
-                moduleCount="12 modules"
-                className="h-full cursor-pointer"
-              />
-            </Link>
-
-            <Link href="/courses/docker-essentials" className="block">
-              <CourseCard
-                icon={<DockerIcon size={48} />}
-                title="Docker Essentials"
-                description="Containerize applications and streamline your development workflow."
-                level="Beginner"
-                duration="10h 12m"
-                moduleCount="8 modules"
-                className="h-full cursor-pointer"
-              />
-            </Link>
-
-            <Link href="/courses/typescript-deep-dive" className="block">
-              <CourseCard
-                icon={<TypeScriptIcon size={48} />}
-                title="TypeScript Deep Dive"
-                description="Go beyond the basics and write safer, more expressive code."
-                level="Intermediate"
-                duration="14h 36m"
-                moduleCount="10 modules"
-                className="h-full cursor-pointer"
-              />
-            </Link>
+            {displayCourses.map((course) => (
+              <Link key={course.slug} href={`/courses/${course.slug}`} className="block">
+                <CourseCard
+                  imageUrl={course.imageUrl}
+                  icon={course.icon}
+                  title={course.title}
+                  description={course.description}
+                  level={course.level}
+                  duration={course.duration}
+                  moduleCount={course.moduleCount}
+                  className="h-full cursor-pointer"
+                />
+              </Link>
+            ))}
           </div>
 
           {/* Weekly Updates Divider Notice */}

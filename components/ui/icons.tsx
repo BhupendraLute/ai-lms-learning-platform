@@ -27,6 +27,18 @@ import {
   BookOpen,
   Menu,
   X,
+  Users,
+  Gauge,
+  Layers,
+  Workflow,
+  Cloud,
+  Database,
+  Shield,
+  Puzzle,
+  Code,
+  Rocket,
+  Sparkles,
+  Share2,
 } from "lucide-react";
 
 export interface IconProps extends React.SVGProps<SVGSVGElement> {
@@ -159,5 +171,17 @@ export {
   BookOpen,
   Menu,
   X,
+  Users,
+  Gauge,
+  Layers,
+  Workflow,
+  Cloud,
+  Database,
+  Shield,
+  Puzzle,
+  Code,
+  Rocket,
+  Sparkles,
+  Share2,
 };
 
