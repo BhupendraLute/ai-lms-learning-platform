@@ -9,15 +9,29 @@ import {
   Input,
   Breadcrumbs,
 } from "@/components/ui";
+import { getAllCourses } from "@/sanity/lib/data";
+import { urlForImage } from "@/sanity/lib/image";
 
 export const metadata = {
   title: "All Courses - AI-LMS",
   description: "Browse all intelligent video courses available on AI-LMS.",
 };
 
-const courses = [
+interface CourseDisplayItem {
+  slug: string;
+  title: string;
+  description: string;
+  level: string;
+  duration: string;
+  moduleCount: string;
+  imageUrl?: string;
+  icon?: React.ReactNode;
+}
+
+// Fallback courses if Sanity is offline
+const fallbackCourses: CourseDisplayItem[] = [
   {
-    slug: "nextjs-for-production",
+    slug: "nextjs-app-router-in-depth",
     title: "Next.js for Production",
     description: "Build scalable, high-performance web applications with Next.js.",
     level: "Intermediate",
@@ -26,7 +40,7 @@ const courses = [
     icon: <NextjsIcon size={48} />,
   },
   {
-    slug: "docker-essentials",
+    slug: "devops-with-docker-and-kubernetes",
     title: "Docker Essentials",
     description: "Containerize applications and streamline your development workflow.",
     level: "Beginner",
@@ -35,7 +49,7 @@ const courses = [
     icon: <DockerIcon size={48} />,
   },
   {
-    slug: "typescript-deep-dive",
+    slug: "typescript-for-application-developers",
     title: "TypeScript Deep Dive",
     description: "Go beyond the basics and write safer, more expressive code.",
     level: "Intermediate",
@@ -45,7 +59,40 @@ const courses = [
   },
 ];
 
-export default function CoursesPage() {
+function getCourseIcon(slug: string, title: string) {
+  if (slug.includes("nextjs") || title.toLowerCase().includes("next")) {
+    return <NextjsIcon size={48} />;
+  }
+  if (slug.includes("docker") || title.toLowerCase().includes("docker") || slug.includes("devops")) {
+    return <DockerIcon size={48} />;
+  }
+  if (slug.includes("typescript") || title.toLowerCase().includes("typescript")) {
+    return <TypeScriptIcon size={48} />;
+  }
+  return <NextjsIcon size={48} />;
+}
+
+export default async function CoursesPage() {
+  const sanityCourses = await getAllCourses();
+
+  const coursesList: CourseDisplayItem[] =
+    sanityCourses && sanityCourses.length > 0
+      ? sanityCourses.map((c) => {
+          const imgUrl = urlForImage(c.coverImage);
+          const slugStr = typeof c.slug === "object" ? c.slug.current : c.slug;
+          return {
+            slug: slugStr,
+            title: c.title,
+            description: c.summary,
+            level: c.level || "Intermediate",
+            duration: c.duration || "12h 30m",
+            moduleCount: c.moduleCount ? `${c.moduleCount} modules` : "4 modules",
+            imageUrl: imgUrl,
+            icon: !imgUrl ? getCourseIcon(slugStr, c.title) : undefined,
+          };
+        })
+      : fallbackCourses;
+
   return (
     <div className="min-h-screen bg-[#FAFAFC] text-[#0F172A] flex flex-col justify-between">
       <Navbar activePath="/courses" />
@@ -78,10 +125,11 @@ export default function CoursesPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {courses.map((course) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {coursesList.map((course) => (
             <Link key={course.slug} href={`/courses/${course.slug}`} className="block">
               <CourseCard
+                imageUrl={course.imageUrl}
                 icon={course.icon}
                 title={course.title}
                 description={course.description}

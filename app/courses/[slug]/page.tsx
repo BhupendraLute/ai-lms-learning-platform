@@ -1,275 +1,301 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import {
   Navbar,
-  Button,
-  Badge,
-  NextjsIcon,
-  DockerIcon,
-  TypeScriptIcon,
   Breadcrumbs,
   BarChart2,
   Clock,
   FileText,
-  Play,
-  CheckCircle2,
+  Users,
+  Bookmark,
+  ArrowRight,
 } from "@/components/ui";
-
-const courseData: Record<
-  string,
-  {
-    title: string;
-    description: string;
-    level: string;
-    duration: string;
-    moduleCount: string;
-    instructor: string;
-    icon: React.ReactNode;
-    outcomes: string[];
-    modules: {
-      title: string;
-      lessons: { title: string; duration: string; preview?: boolean }[];
-    }[];
-  }
-> = {
-  "nextjs-for-production": {
-    title: "Next.js for Production",
-    description:
-      "Build scalable, high-performance web applications with Next.js App Router, Server Components, and advanced caching.",
-    level: "Intermediate",
-    duration: "18h 24m",
-    moduleCount: "12 modules",
-    instructor: "Guillermo Rauch",
-    icon: <NextjsIcon size={64} />,
-    outcomes: [
-      "Master Server and Client Component architecture",
-      "Implement robust caching and revalidation strategies",
-      "Deploy scalable web apps to production with zero downtime",
-      "Optimize core web vitals and streaming SSR performance",
-    ],
-    modules: [
-      {
-        title: "Module 1: Architecture & Mental Models",
-        lessons: [
-          { title: "1.1 Introduction to Next.js App Router", duration: "12:30", preview: true },
-          { title: "1.2 Server Components vs Client Components", duration: "18:45", preview: true },
-          { title: "1.3 Rendering Lifecycles and Streaming", duration: "15:20" },
-        ],
-      },
-      {
-        title: "Module 2: Data Fetching and Caching",
-        lessons: [
-          { title: "2.1 Fetch API & Next.js Extended Fetch", duration: "14:10" },
-          { title: "2.2 Static vs Dynamic Rendering", duration: "20:05" },
-          { title: "2.3 Incremental Static Regeneration (ISR)", duration: "16:40" },
-        ],
-      },
-    ],
-  },
-  "docker-essentials": {
-    title: "Docker Essentials",
-    description:
-      "Containerize applications and streamline your development and deployment workflows using Docker & Compose.",
-    level: "Beginner",
-    duration: "10h 12m",
-    moduleCount: "8 modules",
-    instructor: "Solomon Hykes",
-    icon: <DockerIcon size={64} />,
-    outcomes: [
-      "Understand containers, images, and the Docker daemon",
-      "Write optimized multi-stage Dockerfiles",
-      "Orchestrate local multi-service environments with Docker Compose",
-      "Manage persistent volumes, networks, and environment secrets",
-    ],
-    modules: [
-      {
-        title: "Module 1: Getting Started with Docker",
-        lessons: [
-          { title: "1.1 What is Containerization?", duration: "10:15", preview: true },
-          { title: "1.2 Docker CLI and Container Lifecycle", duration: "16:00", preview: true },
-        ],
-      },
-      {
-        title: "Module 2: Building Images & Dockerfile Best Practices",
-        lessons: [
-          { title: "2.1 Writing your first Dockerfile", duration: "14:20" },
-          { title: "2.2 Multi-stage builds for lean production images", duration: "19:10" },
-        ],
-      },
-    ],
-  },
-  "typescript-deep-dive": {
-    title: "TypeScript Deep Dive",
-    description:
-      "Go beyond the basics and write safer, more expressive, and scalable type-safe code for production systems.",
-    level: "Intermediate",
-    duration: "14h 36m",
-    moduleCount: "10 modules",
-    instructor: "Anders Hejlsberg",
-    icon: <TypeScriptIcon size={64} />,
-    outcomes: [
-      "Leverage advanced generics and conditional types",
-      "Master mapped types, template literal types, and type narrowing",
-      "Build reusable utility types and library-grade TypeScript definitions",
-      "Prevent runtime bugs with strict compiler configurations",
-    ],
-    modules: [
-      {
-        title: "Module 1: Advanced Type System Foundations",
-        lessons: [
-          { title: "1.1 Type Inference & Narrowing Patterns", duration: "14:50", preview: true },
-          { title: "1.2 Discriminated Unions in Practice", duration: "17:35", preview: true },
-        ],
-      },
-      {
-        title: "Module 2: Generics and Conditional Types",
-        lessons: [
-          { title: "2.1 Generic Constraints and Default Types", duration: "15:20" },
-          { title: "2.2 Infer Keyword and Template Literal Types", duration: "22:15" },
-        ],
-      },
-    ],
-  },
-};
-
-export async function generateStaticParams() {
-  return [
-    { slug: "nextjs-for-production" },
-    { slug: "docker-essentials" },
-    { slug: "typescript-deep-dive" },
-  ];
-}
+import { getCourseBySlug, getCourseSlugs } from "@/sanity/lib/data";
+import { CourseHeroCover } from "@/components/course/course-hero-cover";
+import { OutcomeIcon } from "@/components/course/outcome-icon";
+import { CourseModulesAccordion } from "@/components/course/course-modules-accordion";
+import { CourseBottomProgress } from "@/components/course/course-bottom-progress";
+import { calculateCourseDuration } from "@/lib/duration";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
+// Generate static params for all published courses in Sanity
+export async function generateStaticParams() {
+  const slugs = await getCourseSlugs();
+  const staticSlugs = new Set([
+    ...slugs,
+    "nextjs-app-router-in-depth",
+    "nextjs-for-production",
+    "typescript-for-application-developers",
+    "devops-with-docker-and-kubernetes",
+  ]);
+
+  return Array.from(staticSlugs).map((slug) => ({ slug }));
+}
+
+// Generate dynamic metadata
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const course = (await getCourseBySlug(slug)) || (slug === "nextjs-for-production" ? await getCourseBySlug("nextjs-app-router-in-depth") : null);
+
+  if (!course) {
+    return {
+      title: "Course Not Found - AI-LMS",
+      description: "The requested course could not be found.",
+    };
+  }
+
+  return {
+    title: `${course.title} - AI-LMS`,
+    description: course.summary || `Learn ${course.title} with intelligent video search on AI-LMS.`,
+  };
+}
+
+// Helper to format student count
+function formatStudentCount(count?: number): string {
+  if (!count) return "2.1k students";
+  if (count >= 1000) {
+    const formatted = (count / 1000).toFixed(1).replace(/\.0$/, "");
+    return `${formatted}k students`;
+  }
+  return `${count} students`;
+}
+
 export default async function CourseDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const course = courseData[slug];
+
+  // Fetch course data from Sanity (with graceful alias fallback for nextjs-for-production)
+  let course = await getCourseBySlug(slug);
+  if (!course && slug === "nextjs-for-production") {
+    course = await getCourseBySlug("nextjs-app-router-in-depth");
+  }
 
   if (!course) {
     notFound();
   }
 
+  const moduleCount = course.modules?.length || 0;
+  const totalDuration = calculateCourseDuration(course);
+  const studentCountFormatted = formatStudentCount(course.studentCount);
+  const currentSlug = typeof course.slug === "object" ? course.slug.current : course.slug || slug;
+
+  // Resolve first lesson link
+  const firstLesson = course.modules?.[0]?.lessons?.[0];
+  const firstLessonSlug =
+    typeof firstLesson?.slug === "object"
+      ? firstLesson.slug.current
+      : firstLesson?.slug;
+  const continueHref = firstLessonSlug
+    ? `/courses/${currentSlug}/lessons/${firstLessonSlug}`
+    : `/courses/${currentSlug}`;
+
+  // Default learning outcomes fallback if none configured
+  const learningOutcomes =
+    course.learningOutcomes && course.learningOutcomes.length > 0
+      ? course.learningOutcomes
+      : [
+          {
+            _key: "outcome-1",
+            icon: "layers",
+            title: "App Router Foundations",
+            description:
+              "Master the App Router, layouts, loading states, and nested routing.",
+          },
+          {
+            _key: "outcome-2",
+            icon: "database",
+            title: "Data Fetching & Caching",
+            description:
+              "Fetch data efficiently and leverage caching for better performance.",
+          },
+          {
+            _key: "outcome-3",
+            icon: "gauge",
+            title: "Performance Optimization",
+            description:
+              "Optimize rendering, assets, and bundle size for faster apps.",
+          },
+          {
+            _key: "outcome-4",
+            icon: "cloud",
+            title: "Deployment & Scaling",
+            description:
+              "Deploy with confidence and scale your Next.js applications.",
+          },
+        ];
+
   return (
-    <div className="min-h-screen bg-[#FAFAFC] text-[#0F172A] flex flex-col justify-between">
+    <div className="min-h-screen bg-[#FAFAFC] text-[#0F172A] flex flex-col justify-between overflow-x-hidden">
+      {/* Top Header Navigation */}
       <Navbar activePath="/courses" />
 
-      <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 sm:px-6 md:px-12 py-8 sm:py-12">
-        <div className="mb-6">
+      {/* Main Container */}
+      <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 sm:px-6 md:px-12 pt-6 sm:pt-8 pb-12">
+        {/* Breadcrumb Navigation */}
+        <div className="mb-6 sm:mb-8">
           <Breadcrumbs
             items={[
-              { label: "Home", href: "/" },
-              { label: "Courses", href: "/courses" },
-              { label: course.title, href: `/courses/${slug}`, active: true },
+              { label: "All Courses", href: "/courses" },
+              { label: course.title, href: `/courses/${currentSlug}`, active: true },
             ]}
           />
         </div>
 
-        {/* Hero Course Header */}
-        <div className="rounded-[20px] border border-[#E2E8F0] bg-white p-6 sm:p-10 shadow-sm mb-10">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-6 justify-between">
-            <div className="flex items-start sm:items-center gap-5">
-              {course.icon}
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <Badge variant="popular">POPULAR</Badge>
-                  <span className="text-xs font-medium text-[#64748B]">
-                    Instructor: {course.instructor}
-                  </span>
+        {/* Hero Course Header Section */}
+        <section className="rounded-[20px] border border-[#E2E8F0] bg-white p-6 sm:p-8 md:p-10 shadow-sm mb-12 sm:mb-16">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 sm:gap-8 lg:gap-12 justify-between">
+            {/* Left Column: Course Cover Card */}
+            <div className="shrink-0 flex justify-center lg:justify-start w-full lg:w-auto">
+              <CourseHeroCover
+                coverImage={course.coverImage}
+                title={course.title}
+                slug={currentSlug}
+              />
+            </div>
+
+            {/* Right Column: Title, Metadata & CTAs */}
+            <div className="flex-1 min-w-0">
+              {/* Popular Badge */}
+              {course.popular !== false && (
+                <div className="inline-flex items-center px-3 py-1 rounded-[6px] bg-[#FFEEE5] text-[#EA580C] text-[11px] font-bold tracking-wider uppercase mb-3 select-none">
+                  POPULAR
                 </div>
-                <h1 className="font-serif text-3xl sm:text-4xl font-bold text-[#0F172A] tracking-tight">
-                  {course.title}
-                </h1>
-                <p className="text-sm sm:text-base text-[#64748B] mt-2 max-w-2xl">
-                  {course.description}
-                </p>
+              )}
+
+              {/* Course Title */}
+              <h1 className="font-serif text-3xl sm:text-4xl md:text-[44px] font-bold text-[#0F172A] tracking-tight leading-[1.14]">
+                {course.title}
+              </h1>
+
+              {/* Course Summary */}
+              <p className="text-sm sm:text-base text-[#475569] mt-3 sm:mt-4 leading-relaxed max-w-2xl">
+                {course.summary}
+              </p>
+
+              {/* Course Meta Stats Row */}
+              <div className="flex flex-wrap items-center gap-5 sm:gap-7 my-6 text-xs sm:text-sm text-[#64748B]">
+                <div className="flex items-center gap-2 font-medium">
+                  <BarChart2 className="w-4 h-4 text-[#64748B]" strokeWidth={2} />
+                  <span>{course.level || "Intermediate"}</span>
+                </div>
+                <div className="flex items-center gap-2 font-medium">
+                  <Clock className="w-4 h-4 text-[#64748B]" strokeWidth={2} />
+                  <span>{totalDuration}</span>
+                </div>
+                <div className="flex items-center gap-2 font-medium">
+                  <FileText className="w-4 h-4 text-[#64748B]" strokeWidth={2} />
+                  <span>{moduleCount} modules</span>
+                </div>
+                <div className="flex items-center gap-2 font-medium">
+                  <Users className="w-4 h-4 text-[#64748B]" strokeWidth={2} />
+                  <span>{studentCountFormatted}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 pt-1">
+                <Link
+                  href={continueHref}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-[12px] bg-[#D95D39] hover:bg-[#C24E2B] active:bg-[#AA3E1D] text-white text-sm md:text-base font-medium shadow-sm hover:shadow transition-all duration-150 cursor-pointer"
+                >
+                  <span>Continue Learning</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-[12px] border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-[#0F172A] text-sm md:text-base font-medium shadow-xs transition-all duration-150 cursor-pointer"
+                  aria-label="Bookmark this course"
+                >
+                  <Bookmark className="w-4 h-4 text-[#0F172A]" strokeWidth={2} />
+                  <span>Bookmark</span>
+                </button>
               </div>
             </div>
-
-            <div className="w-full md:w-auto shrink-0 pt-4 md:pt-0">
-              <Link href="/courses">
-                <Button variant="primary" size="lg" className="w-full md:w-auto">
-                  Start Course
-                </Button>
-              </Link>
-            </div>
           </div>
+        </section>
 
-          <div className="flex flex-wrap items-center gap-6 pt-6 mt-6 border-t border-[#F1F5F9] text-xs sm:text-sm text-[#64748B]">
-            <div className="flex items-center gap-1.5 font-medium">
-              <BarChart2 className="w-4 h-4 text-[#F97316]" />
-              <span>{course.level}</span>
-            </div>
-            <div className="flex items-center gap-1.5 font-medium">
-              <Clock className="w-4 h-4 text-[#F97316]" />
-              <span>{course.duration}</span>
-            </div>
-            <div className="flex items-center gap-1.5 font-medium">
-              <FileText className="w-4 h-4 text-[#F97316]" />
-              <span>{course.moduleCount}</span>
-            </div>
-          </div>
-        </div>
+        {/* What You'll Learn Section */}
+        <section className="mb-12 sm:mb-16">
+          <h2 className="font-serif text-2xl md:text-[28px] font-bold text-[#0F172A] tracking-tight mb-6 sm:mb-7">
+            What you&apos;ll learn
+          </h2>
 
-        {/* Learning Outcomes & Syllabus Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Syllabus Modules */}
-          <div className="lg:col-span-2 space-y-6">
-            <h2 className="font-serif text-2xl font-bold text-[#0F172A]">Course Modules</h2>
-            <div className="space-y-4">
-              {course.modules.map((mod, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-[16px] border border-[#E2E8F0] bg-white p-5 shadow-sm"
-                >
-                  <h3 className="text-base font-semibold text-[#0F172A] mb-3">{mod.title}</h3>
-                  <div className="divide-y divide-[#F1F5F9]">
-                    {mod.lessons.map((lesson, lIdx) => (
-                      <div
-                        key={lIdx}
-                        className="py-3 flex items-center justify-between text-sm hover:bg-[#FAFAFC] px-2 rounded-lg transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Play className="w-4 h-4 text-[#F97316]" />
-                          <span className="font-medium text-[#334155]">{lesson.title}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {lesson.preview && <Badge variant="video">Free Preview</Badge>}
-                          <span className="text-xs text-[#64748B]">{lesson.duration}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            {learningOutcomes.map((outcome, idx) => (
+              <div
+                key={outcome._key || `outcome-${idx}`}
+                className="rounded-[16px] border border-[#E2E8F0] bg-white p-6 sm:p-7 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex items-start gap-4 sm:gap-5 transition-all duration-200 hover:border-[#CBD5E1]"
+              >
+                <OutcomeIcon icon={outcome.icon} size={44} className="mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-serif text-base sm:text-lg font-bold text-[#0F172A] leading-snug">
+                    {outcome.title}
+                  </h3>
+                  {outcome.description && (
+                    <p className="text-xs sm:text-sm text-[#64748B] mt-1.5 leading-relaxed">
+                      {outcome.description}
+                    </p>
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Course Content Section */}
+        <section className="mb-12 sm:mb-16">
+          {/* Section Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-serif text-2xl md:text-[28px] font-bold text-[#0F172A] tracking-tight">
+              Course Content
+            </h2>
+            <span className="text-xs sm:text-sm text-[#64748B] font-normal">
+              {moduleCount} modules • {totalDuration}
+            </span>
           </div>
 
-          {/* What you'll learn */}
-          <div>
-            <div className="rounded-[16px] border border-[#E2E8F0] bg-white p-6 shadow-sm sticky top-24">
-              <h2 className="font-serif text-xl font-bold text-[#0F172A] mb-4">
-                What you will learn
-              </h2>
-              <ul className="space-y-3">
-                {course.outcomes.map((outcome, idx) => (
-                  <li key={idx} className="flex items-start gap-2.5 text-sm text-[#334155]">
-                    <CheckCircle2 className="w-4 h-4 text-[#F97316] shrink-0 mt-0.5" />
-                    <span>{outcome}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
+          {/* Interactive Modules Accordion */}
+          <CourseModulesAccordion
+            modules={course.modules || []}
+            courseSlug={currentSlug}
+            initialExpandedIndex={0}
+          />
+        </section>
+
+        {/* Floating Bottom Progress Bar */}
+        <CourseBottomProgress
+          percentage={35}
+          continueHref={continueHref}
+          className="mt-8 mb-4"
+        />
       </main>
 
-      <footer className="border-t border-[#E2E8F0] bg-white py-6 text-center text-xs text-[#64748B]">
-        AI-LMS Platform • Built with Next.js & Tailwind CSS
-      </footer>
+      {/* Decorative Rising Warm Gradient Horizon Skyline */}
+      <div
+        className="w-full h-44 md:h-56 relative overflow-hidden pointer-events-none mt-auto flex items-end justify-center select-none"
+        aria-hidden="true"
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-[#FED7AA]/30 via-[#FFEEE5]/20 to-transparent z-0" />
+        <div className="w-full max-w-[1440px] mx-auto grid grid-cols-12 gap-2 sm:gap-4 px-6 md:px-12 items-end relative z-10 opacity-75">
+          <div className="h-16 sm:h-20 bg-gradient-to-t from-[#F97316]/40 via-[#FB923C]/20 to-transparent rounded-t-sm" />
+          <div className="h-24 sm:h-32 bg-gradient-to-t from-[#F97316]/50 via-[#FB923C]/25 to-transparent rounded-t-sm" />
+          <div className="h-32 sm:h-44 bg-gradient-to-t from-[#F97316]/60 via-[#FB923C]/30 to-transparent rounded-t-sm" />
+          <div className="h-36 sm:h-52 bg-gradient-to-t from-[#F97316]/65 via-[#FB923C]/35 to-transparent rounded-t-sm" />
+          <div className="h-16 sm:h-24 bg-gradient-to-t from-[#F97316]/35 via-[#FB923C]/15 to-transparent rounded-t-sm" />
+          <div className="h-12 sm:h-16 bg-gradient-to-t from-[#F97316]/25 via-[#FB923C]/10 to-transparent rounded-t-sm" />
+          <div className="h-20 sm:h-28 bg-gradient-to-t from-[#F97316]/45 via-[#FB923C]/20 to-transparent rounded-t-sm" />
+          <div className="h-28 sm:h-40 bg-gradient-to-t from-[#F97316]/55 via-[#FB923C]/25 to-transparent rounded-t-sm" />
+          <div className="h-36 sm:h-52 bg-gradient-to-t from-[#F97316]/65 via-[#FB923C]/35 to-transparent rounded-t-sm" />
+          <div className="h-40 sm:h-56 bg-gradient-to-t from-[#F97316]/70 via-[#FB923C]/40 to-transparent rounded-t-sm" />
+          <div className="h-32 sm:h-44 bg-gradient-to-t from-[#F97316]/60 via-[#FB923C]/30 to-transparent rounded-t-sm" />
+          <div className="h-24 sm:h-32 bg-gradient-to-t from-[#F97316]/45 via-[#FB923C]/20 to-transparent rounded-t-sm" />
+        </div>
+      </div>
     </div>
   );
 }

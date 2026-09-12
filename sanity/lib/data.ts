@@ -1,4 +1,4 @@
-import { sanityFetch } from './live'
+import { serverClient } from './client'
 import {
   ALL_CATEGORIES_QUERY,
   ALL_COURSES_QUERY,
@@ -24,10 +24,8 @@ import type {
  */
 export async function getAllCourses(): Promise<CourseSummary[]> {
   try {
-    const { data } = await sanityFetch({
-      query: ALL_COURSES_QUERY,
-    })
-    return (data as unknown as CourseSummary[]) || []
+    const data = await serverClient.fetch<CourseSummary[]>(ALL_COURSES_QUERY)
+    return data || []
   } catch (error) {
     console.error('Error fetching all courses from Sanity:', error)
     return []
@@ -39,10 +37,8 @@ export async function getAllCourses(): Promise<CourseSummary[]> {
  */
 export async function getPopularCourses(): Promise<CourseSummary[]> {
   try {
-    const { data } = await sanityFetch({
-      query: POPULAR_COURSES_QUERY,
-    })
-    return (data as unknown as CourseSummary[]) || []
+    const data = await serverClient.fetch<CourseSummary[]>(POPULAR_COURSES_QUERY)
+    return data || []
   } catch (error) {
     console.error('Error fetching popular courses from Sanity:', error)
     return []
@@ -54,11 +50,8 @@ export async function getPopularCourses(): Promise<CourseSummary[]> {
  */
 export async function getCourseBySlug(slug: string): Promise<Course | null> {
   try {
-    const { data } = await sanityFetch({
-      query: COURSE_BY_SLUG_QUERY,
-      params: { slug },
-    })
-    return (data as unknown as Course) || null
+    const data = await serverClient.fetch<Course | null>(COURSE_BY_SLUG_QUERY, { slug })
+    return data || null
   } catch (error) {
     console.error(`Error fetching course "${slug}" from Sanity:`, error)
     return null
@@ -70,10 +63,8 @@ export async function getCourseBySlug(slug: string): Promise<Course | null> {
  */
 export async function getCourseSlugs(): Promise<string[]> {
   try {
-    const { data } = await sanityFetch({
-      query: COURSE_SLUGS_QUERY,
-    })
-    return (data as unknown as string[]) || []
+    const data = await serverClient.fetch<string[]>(COURSE_SLUGS_QUERY)
+    return data || []
   } catch (error) {
     console.error('Error fetching course slugs from Sanity:', error)
     return []
@@ -87,14 +78,14 @@ export async function getLessonBySlug(
   slug: string
 ): Promise<LessonDetailWithContext | null> {
   try {
-    const { data } = await sanityFetch({
-      query: LESSON_BY_SLUG_QUERY,
-      params: { slug },
-    })
+    const data = await serverClient.fetch<LessonDetailWithContext | null>(
+      LESSON_BY_SLUG_QUERY,
+      { slug }
+    )
 
     if (!data) return null
 
-    const lessonData = data as unknown as LessonDetailWithContext
+    const lessonData = data
 
     // Calculate module index, lesson index, previous lesson, and next lesson
     if (lessonData.course?.modules) {
@@ -159,10 +150,8 @@ export async function getLessonBySlug(
  */
 export async function getLessonSlugs(): Promise<string[]> {
   try {
-    const { data } = await sanityFetch({
-      query: LESSON_SLUGS_QUERY,
-    })
-    return (data as unknown as string[]) || []
+    const data = await serverClient.fetch<string[]>(LESSON_SLUGS_QUERY)
+    return data || []
   } catch (error) {
     console.error('Error fetching lesson slugs from Sanity:', error)
     return []
@@ -174,10 +163,8 @@ export async function getLessonSlugs(): Promise<string[]> {
  */
 export async function getAllCategories(): Promise<Category[]> {
   try {
-    const { data } = await sanityFetch({
-      query: ALL_CATEGORIES_QUERY,
-    })
-    return (data as unknown as Category[]) || []
+    const data = await serverClient.fetch<Category[]>(ALL_CATEGORIES_QUERY)
+    return data || []
   } catch (error) {
     console.error('Error fetching categories from Sanity:', error)
     return []
@@ -189,11 +176,10 @@ export async function getAllCategories(): Promise<Category[]> {
  */
 export async function getCategoryBySlug(slug: string): Promise<Category | null> {
   try {
-    const { data } = await sanityFetch({
-      query: CATEGORY_BY_SLUG_QUERY,
-      params: { slug },
+    const data = await serverClient.fetch<Category | null>(CATEGORY_BY_SLUG_QUERY, {
+      slug,
     })
-    return (data as unknown as Category) || null
+    return data || null
   } catch (error) {
     console.error(`Error fetching category "${slug}" from Sanity:`, error)
     return null
@@ -205,10 +191,8 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
  */
 export async function getAllInstructors(): Promise<Instructor[]> {
   try {
-    const { data } = await sanityFetch({
-      query: ALL_INSTRUCTORS_QUERY,
-    })
-    return (data as unknown as Instructor[]) || []
+    const data = await serverClient.fetch<Instructor[]>(ALL_INSTRUCTORS_QUERY)
+    return data || []
   } catch (error) {
     console.error('Error fetching instructors from Sanity:', error)
     return []
@@ -220,11 +204,11 @@ export async function getAllInstructors(): Promise<Instructor[]> {
  */
 export async function getInstructorBySlug(slug: string): Promise<Instructor | null> {
   try {
-    const { data } = await sanityFetch({
-      query: INSTRUCTOR_BY_SLUG_QUERY,
-      params: { slug },
-    })
-    return (data as unknown as Instructor) || null
+    const data = await serverClient.fetch<Instructor | null>(
+      INSTRUCTOR_BY_SLUG_QUERY,
+      { slug }
+    )
+    return data || null
   } catch (error) {
     console.error(`Error fetching instructor "${slug}" from Sanity:`, error)
     return null

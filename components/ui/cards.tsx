@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import { BarChart2, Clock, Play, ExternalLink, FileText } from "lucide-react";
 import { Badge } from "./badge";
 import { cn } from "@/lib/utils";
@@ -6,6 +7,7 @@ import { cn } from "@/lib/utils";
 // 1. Course Card
 export interface CourseCardProps extends React.HTMLAttributes<HTMLDivElement> {
   icon?: React.ReactNode;
+  imageUrl?: string;
   iconText?: string;
   title: string;
   description: string;
@@ -18,6 +20,7 @@ export interface CourseCardProps extends React.HTMLAttributes<HTMLDivElement> {
 export function CourseCard({
   iconText = "N",
   icon,
+  imageUrl,
   title = "Next.js for Production",
   description = "Build scalable, high-performance web applications with Next.js.",
   level = "Intermediate",
@@ -36,7 +39,17 @@ export function CourseCard({
     >
       <div>
         <div className="mb-5">
-          {icon ? (
+          {imageUrl ? (
+            <div className="relative h-12 w-12 shrink-0 rounded-[12px] overflow-hidden border border-[#E2E8F0] shadow-sm bg-[#0F172A]">
+              <Image
+                src={imageUrl}
+                alt={title}
+                fill
+                sizes="48px"
+                className="object-cover"
+              />
+            </div>
+          ) : icon ? (
             icon
           ) : (
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] bg-[#0F172A] text-white font-bold text-xl shadow-sm">
