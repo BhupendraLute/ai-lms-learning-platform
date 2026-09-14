@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import posthog from "posthog-js";
 import { Play, ChevronDown } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -46,7 +47,9 @@ export function CourseModulesAccordion({
   const [showAll, setShowAll] = useState(false);
   const displayedModules = showAll || modules.length <= 6 ? modules : modules.slice(0, 6);
 
-  const toggleModule = (index: number) => {
+  const toggleModule = (index: number, module: ModuleItem) => {
+    const willExpand = !openModules.has(index);
+
     setOpenModules((prev) => {
       const next = new Set(prev);
       if (next.has(index)) {
@@ -56,6 +59,51 @@ export function CourseModulesAccordion({
       }
       return next;
     });
+
+    if (
+      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+      process.env.NEXT_PUBLIC_POSTHOG_HOST
+    ) {
+      posthog.capture("course_module_toggled", {
+        course_slug: courseSlug,
+        module_index: index + 1,
+        lesson_count: module.lessons?.length ?? 0,
+        expanded: willExpand,
+      });
+    }
+  };
+
+  const toggleModuleList = () => {
+    if (
+      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+      process.env.NEXT_PUBLIC_POSTHOG_HOST
+    ) {
+      posthog.capture("course_modules_list_toggled", {
+        course_slug: courseSlug,
+        module_count: modules.length,
+        expanded: !showAll,
+      });
+    }
+
+    setShowAll(!showAll);
+  };
+
+  const captureLessonSelected = (
+    moduleIndex: number,
+    lessonIndex: number,
+    isFreePreview: boolean
+  ) => {
+    if (
+      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+      process.env.NEXT_PUBLIC_POSTHOG_HOST
+    ) {
+      posthog.capture("lesson_selected", {
+        course_slug: courseSlug,
+        module_index: moduleIndex + 1,
+        lesson_index: lessonIndex + 1,
+        is_free_preview: isFreePreview,
+      });
+    }
   };
 
   if (modules.length === 0) {
@@ -81,7 +129,7 @@ export function CourseModulesAccordion({
             {/* Module Accordion Header */}
             <button
               type="button"
-              onClick={() => toggleModule(index)}
+              onClick={() => toggleModule(index, module)}
               className="w-full p-4 sm:p-5 flex items-center justify-between text-left gap-4 hover:bg-[#FAFAFC] transition-colors cursor-pointer select-none"
               aria-expanded={isOpen}
             >
@@ -136,6 +184,9 @@ export function CourseModulesAccordion({
                     >
                       <Link
                         href={lessonHref}
+                        onClick={() =>
+                          captureLessonSelected(index, lIdx, Boolean(lesson.isFreePreview))
+                        }
                         className="flex items-center gap-3 min-w-0 flex-1 group-hover:text-[#D95D39] transition-colors"
                       >
                         <div className="w-6 h-6 rounded-full bg-white border border-[#E2E8F0] flex items-center justify-center shrink-0 shadow-xs group-hover:border-[#FED7AA]">
@@ -172,7 +223,7 @@ export function CourseModulesAccordion({
         <div className="flex justify-center pt-2">
           <button
             type="button"
-            onClick={() => setShowAll(!showAll)}
+            onClick={toggleModuleList}
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-[#E2E8F0] bg-white text-sm font-medium text-[#0F172A] shadow-sm hover:bg-[#F8FAFC] hover:border-[#CBD5E1] transition-all active:scale-[0.99] cursor-pointer"
           >
             <span>
