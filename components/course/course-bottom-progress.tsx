@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import posthog from "posthog-js";
 import { ArrowRight } from "@/components/ui/icons";
 
 interface CourseBottomProgressProps {
@@ -16,6 +17,18 @@ export function CourseBottomProgress({
   className = "",
 }: CourseBottomProgressProps) {
   const clamped = Math.min(Math.max(percentage, 0), 100);
+
+  const captureContinueLearning = () => {
+    if (
+      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+      process.env.NEXT_PUBLIC_POSTHOG_HOST
+    ) {
+      posthog.capture("continue_learning_clicked", {
+        progress_percentage: clamped,
+        source: "course_progress",
+      });
+    }
+  };
 
   return (
     <div
@@ -44,6 +57,7 @@ export function CourseBottomProgress({
         <div className="shrink-0 w-full sm:w-auto">
           <Link
             href={continueHref}
+            onClick={captureContinueLearning}
             className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-[12px] bg-[#D95D39] hover:bg-[#C24E2B] active:bg-[#AA3E1D] text-white text-sm md:text-base font-medium shadow-sm hover:shadow transition-all duration-150 cursor-pointer"
           >
             <span>Continue Learning</span>

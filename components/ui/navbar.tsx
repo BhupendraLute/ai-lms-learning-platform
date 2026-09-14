@@ -2,9 +2,22 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import posthog from "posthog-js";
 import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
 import { AiLmsLogo, Bell, Menu, X } from "./icons";
 import { cn } from "@/lib/utils";
+
+function captureAuthStarted(
+  event: "sign_in_started" | "sign_up_started",
+  source: "desktop_navigation" | "mobile_navigation"
+) {
+  if (
+    process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+    process.env.NEXT_PUBLIC_POSTHOG_HOST
+  ) {
+    posthog.capture(event, { source });
+  }
+}
 
 export interface NavItem {
   label: string;
@@ -82,6 +95,7 @@ export function Navbar({
               <SignInButton mode="modal">
                 <button
                   type="button"
+                  onClick={() => captureAuthStarted("sign_in_started", "desktop_navigation")}
                   className="text-sm font-medium text-[#334155] hover:text-[#0F172A] px-3 py-1.5 rounded-lg hover:bg-[#F1F5F9] transition-colors"
                 >
                   Sign in
@@ -90,6 +104,7 @@ export function Navbar({
               <SignUpButton mode="modal">
                 <button
                   type="button"
+                  onClick={() => captureAuthStarted("sign_up_started", "desktop_navigation")}
                   className="text-sm font-medium bg-[#F97316] text-white hover:bg-[#EA580C] px-3.5 py-1.5 rounded-[10px] shadow-sm transition-all hover:shadow hover:scale-[1.01] active:scale-[0.99]"
                 >
                   Sign up
@@ -167,6 +182,7 @@ export function Navbar({
               <SignInButton mode="modal">
                 <button
                   type="button"
+                  onClick={() => captureAuthStarted("sign_in_started", "mobile_navigation")}
                   className="w-full text-center px-3 py-2 rounded-lg text-sm font-medium text-[#334155] border border-[#E2E8F0] hover:bg-[#F1F5F9] transition-colors"
                 >
                   Sign in
@@ -175,6 +191,7 @@ export function Navbar({
               <SignUpButton mode="modal">
                 <button
                   type="button"
+                  onClick={() => captureAuthStarted("sign_up_started", "mobile_navigation")}
                   className="w-full text-center px-3 py-2 rounded-lg text-sm font-medium bg-[#F97316] text-white hover:bg-[#EA580C] shadow-sm transition-colors"
                 >
                   Sign up
