@@ -264,3 +264,163 @@ export const INSTRUCTOR_BY_SLUG_QUERY = defineQuery(`
     }
   }
 `)
+
+// ==========================================
+// Intelligent Search Queries
+// ==========================================
+
+export const SEARCH_LESSONS_QUERY = defineQuery(`
+  *[_type == "lesson" && (
+    title match $term ||
+    title match $wildcard ||
+    keyPoints[] match $term ||
+    keyPoints[] match $wildcard ||
+    pt::text(notes) match $term ||
+    pt::text(notes) match $wildcard ||
+    proTip match $term
+  )] {
+    _id,
+    _type,
+    title,
+    slug,
+    videoUrl,
+    "poster": coalesce(poster, thumbnail),
+    duration,
+    isFreePreview,
+    keyPoints,
+    proTip,
+    "course": *[_type == "course" && references(^._id)][0] {
+      _id,
+      title,
+      slug,
+      coverImage,
+      category->{ _id, title, slug },
+      modules[]{
+        _key,
+        title,
+        summary,
+        lessons[]->{
+          _id,
+          slug
+        }
+      }
+    }
+  }
+`)
+
+export const SEARCH_VIDEO_CHAPTERS_QUERY = defineQuery(`
+  *[_type == "video" && (
+    chapters[].label match $term ||
+    chapters[].label match $wildcard
+  )] {
+    _id,
+    _type,
+    id,
+    url,
+    title,
+    duration,
+    "matchedChapters": chapters[label match $term || label match $wildcard] {
+      _key,
+      startSeconds,
+      label
+    },
+    "lesson": *[_type == "lesson" && videoUrl == ^.url][0] {
+      _id,
+      title,
+      slug,
+      "poster": coalesce(poster, thumbnail),
+      duration,
+      isFreePreview,
+      keyPoints,
+      "course": *[_type == "course" && references(^._id)][0] {
+        _id,
+        title,
+        slug,
+        coverImage,
+        category->{ _id, title, slug },
+        modules[]{
+          _key,
+          title,
+          summary,
+          lessons[]->{
+            _id,
+            slug
+          }
+        }
+      }
+    }
+  }
+`)
+
+export const SEARCH_VIDEO_CHUNKS_QUERY = defineQuery(`
+  *[_type == "video" && (
+    chunks[].text match $term ||
+    chunks[].text match $wildcard
+  )] {
+    _id,
+    _type,
+    id,
+    url,
+    title,
+    duration,
+    "matchedChunks": chunks[text match $term || text match $wildcard][0...3] {
+      _key,
+      startSeconds,
+      text
+    },
+    "lesson": *[_type == "lesson" && videoUrl == ^.url][0] {
+      _id,
+      title,
+      slug,
+      "poster": coalesce(poster, thumbnail),
+      duration,
+      isFreePreview,
+      keyPoints,
+      "course": *[_type == "course" && references(^._id)][0] {
+        _id,
+        title,
+        slug,
+        coverImage,
+        category->{ _id, title, slug },
+        modules[]{
+          _key,
+          title,
+          summary,
+          lessons[]->{
+            _id,
+            slug
+          }
+        }
+      }
+    }
+  }
+`)
+
+export const SEARCH_ALL_COURSES_TREE_QUERY = defineQuery(`
+  *[_type == "course" && defined(slug.current)] {
+    _id,
+    title,
+    slug,
+    summary,
+    coverImage,
+    category->{ _id, title, slug },
+    modules[]{
+      _key,
+      title,
+      summary,
+      lessons[]->{
+        _id,
+        title,
+        slug,
+        videoUrl,
+        "poster": coalesce(poster, thumbnail),
+        duration,
+        isFreePreview,
+        keyPoints,
+        "notesText": pt::text(notes),
+        proTip
+      }
+    }
+  }
+`)
+

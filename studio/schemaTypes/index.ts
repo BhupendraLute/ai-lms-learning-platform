@@ -8,6 +8,8 @@ import { blockContentType } from './blockContentType'
 import { lessonType } from './lessonType'
 import { moduleType } from './moduleType'
 import { courseType } from './courseType'
+import { videoType } from './videoType'
+import { agentContextType } from './agentContextType'
 
 export const schema: { types: SchemaTypeDefinition[] } = {
   types: [
@@ -16,6 +18,8 @@ export const schema: { types: SchemaTypeDefinition[] } = {
     lessonType,
     instructorType,
     categoryType,
+    videoType,
+    agentContextType,
     // Objects & Blocks
     moduleType,
     learningOutcomeType,
