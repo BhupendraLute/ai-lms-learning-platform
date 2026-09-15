@@ -93,6 +93,7 @@ export async function getLessonBySlug(
       const flatLessons: {
         title: string
         slug: { current: string }
+        duration?: string
         moduleTitle: string
         moduleIdx: number
         lessonIdx: number
@@ -104,6 +105,7 @@ export async function getLessonBySlug(
             flatLessons.push({
               title: les.title,
               slug: les.slug,
+              duration: les.duration,
               moduleTitle: mod.title,
               moduleIdx: modIdx + 1,
               lessonIdx: lesIdx + 1,
@@ -126,6 +128,7 @@ export async function getLessonBySlug(
           lessonData.prevLesson = {
             title: flatLessons[currentIndex - 1].title,
             slug: flatLessons[currentIndex - 1].slug,
+            duration: flatLessons[currentIndex - 1].duration,
           }
         }
 
@@ -133,6 +136,7 @@ export async function getLessonBySlug(
           lessonData.nextLesson = {
             title: flatLessons[currentIndex + 1].title,
             slug: flatLessons[currentIndex + 1].slug,
+            duration: flatLessons[currentIndex + 1].duration,
           }
         }
       }

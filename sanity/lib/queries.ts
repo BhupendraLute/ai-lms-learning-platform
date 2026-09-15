@@ -127,9 +127,9 @@ export const LESSON_BY_SLUG_QUERY = defineQuery(`
     title,
     slug,
     videoUrl,
-    poster,
+    "poster": coalesce(poster, thumbnail),
     duration,
-    isFreePreview,
+    "isFreePreview": coalesce(isFreePreview, freePreview, false),
     studentCount,
     keyPoints,
     proTip,
@@ -145,6 +145,9 @@ export const LESSON_BY_SLUG_QUERY = defineQuery(`
       _id,
       title,
       slug,
+      coverImage,
+      level,
+      studentCount,
       instructor->{
         _id,
         name,
@@ -152,13 +155,15 @@ export const LESSON_BY_SLUG_QUERY = defineQuery(`
         photo
       },
       modules[]{
+        _key,
         title,
+        summary,
         lessons[]->{
           _id,
           title,
           slug,
           duration,
-          isFreePreview
+          "isFreePreview": coalesce(isFreePreview, freePreview, false)
         }
       }
     }
