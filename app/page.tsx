@@ -11,7 +11,7 @@ import {
 } from "@/components/ui";
 import { HeroSearchBar } from "@/components/home/hero-search-bar";
 import { getAllCourses } from "@/sanity/lib/data";
-import { urlForImage } from "@/sanity/lib/image";
+import { imageUrl } from "@/sanity/lib/image";
 
 interface CourseDisplayItem {
   slug: string;
@@ -93,7 +93,7 @@ export default async function HomePage() {
 
     displayCourses = finalCourseSelection.map((c) => {
       const slugStr = typeof c!.slug === "object" ? c!.slug.current : c!.slug;
-      const imgUrl = urlForImage(c!.coverImage);
+      const imgUrl = imageUrl(c!.coverImage);
       return {
         slug: slugStr,
         title: c!.title,

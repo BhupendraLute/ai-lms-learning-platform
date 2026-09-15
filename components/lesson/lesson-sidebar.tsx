@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { getLessonsDuration, formatLessonDuration } from "@/lib/duration";
-import { urlForImage } from "@/sanity/lib/image";
+import { imageUrl } from "@/sanity/lib/image";
 import type { SanityImage, Module, LessonSummary } from "@/sanity/types";
 
 interface LessonSidebarProps {
@@ -58,7 +58,7 @@ export function LessonSidebar({
     });
   };
 
-  const coverUrl = courseCoverImage ? urlForImage(courseCoverImage) : null;
+  const coverUrl = courseCoverImage ? imageUrl(courseCoverImage) : null;
 
   const totalModules = modules.length;
   const displayModuleIndex = Math.min(Math.max(1, currentModuleIndex), totalModules || 1);
