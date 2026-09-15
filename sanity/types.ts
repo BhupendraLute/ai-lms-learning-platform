@@ -111,11 +111,11 @@ export interface LessonDetailWithContext extends Lesson {
     _id: string
     title: string
     slug: { current: string }
+    coverImage?: SanityImage
+    level?: string
+    studentCount?: number
     instructor?: Pick<Instructor, '_id' | 'name' | 'slug' | 'photo'>
-    modules?: {
-      title: string
-      lessons: LessonSummary[]
-    }[]
+    modules?: Module[]
   }
   moduleTitle?: string
   moduleIndex?: number
@@ -123,9 +123,12 @@ export interface LessonDetailWithContext extends Lesson {
   prevLesson?: {
     title: string
     slug: { current: string }
+    duration?: string
   }
   nextLesson?: {
     title: string
     slug: { current: string }
+    duration?: string
   }
 }
+

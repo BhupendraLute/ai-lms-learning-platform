@@ -39,6 +39,12 @@ import {
   Rocket,
   Sparkles,
   Share2,
+  Lightbulb,
+  CheckCircle,
+  Maximize,
+  Volume2,
+  RotateCcw,
+  FileCode,
 } from "lucide-react";
 
 export interface IconProps extends React.SVGProps<SVGSVGElement> {
@@ -183,5 +189,11 @@ export {
   Rocket,
   Sparkles,
   Share2,
+  Lightbulb,
+  CheckCircle,
+  Maximize,
+  Volume2,
+  RotateCcw,
+  FileCode,
 };
 
