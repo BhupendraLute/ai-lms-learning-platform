@@ -10,7 +10,7 @@ import {
   Breadcrumbs,
 } from "@/components/ui";
 import { getAllCourses } from "@/sanity/lib/data";
-import { urlForImage } from "@/sanity/lib/image";
+import { imageUrl } from "@/sanity/lib/image";
 
 export const metadata = {
   title: "All Courses - AI-LMS",
@@ -78,7 +78,7 @@ export default async function CoursesPage() {
   const coursesList: CourseDisplayItem[] =
     sanityCourses && sanityCourses.length > 0
       ? sanityCourses.map((c) => {
-          const imgUrl = urlForImage(c.coverImage);
+          const imgUrl = imageUrl(c.coverImage);
           const slugStr = typeof c.slug === "object" ? c.slug.current : c.slug;
           return {
             slug: slugStr,
