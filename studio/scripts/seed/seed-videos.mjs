@@ -50,24 +50,11 @@ const dataset =
 
 const token =
   process.env.SANITY_API_WRITE_TOKEN ||
-  process.env.SANITY_API_READ_TOKEN ||
   process.env.SANITY_AUTH_TOKEN;
 
 if (!token) {
-  console.error('❌ Error: SANITY_API_READ_TOKEN or write token is not set');
+  console.error('❌ Error: SANITY_API_WRITE_TOKEN or SANITY_AUTH_TOKEN is not set');
   process.exit(1);
-}
-
-function blocksToTextArray(blocks) {
-  if (!Array.isArray(blocks)) return [];
-  const lines = [];
-  for (const block of blocks) {
-    if (block._type === 'block' && block.children) {
-      const text = block.children.map((c) => c.text || '').join('').trim();
-      if (text) lines.push(text);
-    }
-  }
-  return lines;
 }
 
 function extractYouTubeId(url) {
@@ -145,65 +132,36 @@ async function seedVideos() {
     const duration = typeof lesson.duration === 'number' ? lesson.duration : (meta.duration || 600);
     const videoId = sanitizeId(`video.${ytId}`);
 
-    const keyPoints = Array.isArray(lesson.keyPoints) ? lesson.keyPoints : [];
-    const notesText = blocksToTextArray(lesson.notes);
-
-    // 1. Build Table of Contents (Chapters)
+    // 1. Build Table of Contents (Chapters) from source metadata only
     const chapters = [];
-    chapters.push({
-      _key: 'ch-0',
-      startSeconds: 0,
-      label: `Introduction to ${lesson.title}`,
-    });
-
-    if (keyPoints.length > 0) {
-      const step = Math.floor((duration * 0.8) / (keyPoints.length + 1));
-      keyPoints.forEach((kp, idx) => {
-        const startSec = Math.min(duration - 30, Math.max(30, (idx + 1) * step));
-        chapters.push({
-          _key: `ch-${idx + 1}`,
-          startSeconds: startSec,
-          label: kp,
-        });
-      });
-    } else {
-      chapters.push({
-        _key: 'ch-1',
-        startSeconds: Math.floor(duration * 0.3),
-        label: `Core Concepts & Architecture`,
-      });
-      chapters.push({
-        _key: 'ch-2',
-        startSeconds: Math.floor(duration * 0.65),
-        label: `Hands-on Implementation & Best Practices`,
+    if (Array.isArray(meta.chapters) && meta.chapters.length > 0) {
+      meta.chapters.forEach((ch, idx) => {
+        if (typeof ch.startSeconds === 'number' && ch.label) {
+          chapters.push({
+            _key: ch._key || `ch-${idx}`,
+            startSeconds: ch.startSeconds,
+            label: ch.label,
+          });
+        }
       });
     }
-
-    chapters.push({
-      _key: `ch-summary`,
-      startSeconds: Math.max(Math.floor(duration * 0.88), duration - 45),
-      label: `Summary & Key Takeaways`,
-    });
 
     // Sort chapters ascending by startSeconds
     chapters.sort((a, b) => a.startSeconds - b.startSeconds);
 
-    // 2. Build Transcript Chunks (timestamped segments every ~30-45s)
+    // 2. Build Transcript Chunks from source metadata only
     const chunks = [];
-    const combinedTexts = [...notesText];
-    if (combinedTexts.length === 0) {
-      combinedTexts.push(`${lesson.title}. In this video we explore key techniques and implementation details.`);
-    }
-
-    const chunkInterval = Math.max(25, Math.floor(duration / Math.max(4, combinedTexts.length)));
-    combinedTexts.forEach((txt, cIdx) => {
-      const startSec = Math.min(duration - 10, cIdx * chunkInterval);
-      chunks.push({
-        _key: `chunk-${cIdx}`,
-        startSeconds: startSec,
-        text: txt,
+    if (Array.isArray(meta.chunks) && meta.chunks.length > 0) {
+      meta.chunks.forEach((chk, idx) => {
+        if (typeof chk.startSeconds === 'number' && chk.text) {
+          chunks.push({
+            _key: chk._key || `chunk-${idx}`,
+            startSeconds: chk.startSeconds,
+            text: chk.text,
+          });
+        }
       });
-    });
+    }
 
     videoDocs.push({
       _id: videoId,

@@ -44,11 +44,10 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: unknown) {
     console.error('❌ Search API error:', error)
-    const message = error instanceof Error ? error.message : 'An unexpected error occurred during search.'
     return NextResponse.json(
       {
         error: 'Search failed',
-        message,
+        message: 'An unexpected error occurred during search.',
       },
       { status: 500 }
     )
