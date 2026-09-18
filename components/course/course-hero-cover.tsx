@@ -1,6 +1,6 @@
 import React from "react";
 import Image from "next/image";
-import { urlForImage } from "@/sanity/lib/image";
+import { imageUrl } from "@/sanity/lib/image";
 import type { SanityImage } from "@/sanity/types";
 
 interface CourseHeroCoverProps {
@@ -10,14 +10,14 @@ interface CourseHeroCoverProps {
 }
 
 export function CourseHeroCover({ coverImage, title, slug }: CourseHeroCoverProps) {
-  const imageUrl = urlForImage(coverImage);
+  const coverUrl = imageUrl(coverImage);
 
   // If a cover image exists in Sanity, display it
-  if (imageUrl) {
+  if (coverUrl) {
     return (
       <div className="relative w-[280px] h-[280px] sm:w-[320px] sm:h-[320px] rounded-[22px] overflow-hidden border border-[#E2E8F0] shadow-md bg-[#0F172A] shrink-0">
         <Image
-          src={imageUrl}
+          src={coverUrl}
           alt={coverImage?.alt || title}
           fill
           priority

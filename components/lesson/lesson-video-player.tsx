@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { Play } from "@/components/ui/icons";
-import { urlForImage } from "@/sanity/lib/image";
+import { imageUrl } from "@/sanity/lib/image";
 import type { SanityImage } from "@/sanity/types";
 
 interface LessonVideoPlayerProps {
@@ -41,7 +41,7 @@ export function LessonVideoPlayer({
   const [isPlaying, setIsPlaying] = useState(false);
 
   // Derive poster image URL
-  const posterUrl = poster ? urlForImage(poster) : null;
+  const posterUrl = poster ? imageUrl(poster) : null;
 
   const embedSrc = React.useMemo(() => {
     if (!videoUrl) return null;
