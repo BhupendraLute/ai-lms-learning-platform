@@ -59,7 +59,27 @@ export function LessonVideoPlayer({
       return `https://player.vimeo.com/video/${vimeoId}?autoplay=1&title=0&byline=0&portrait=0${startHash}`;
     }
 
-    // Direct / Bunny embed URL
+    // Bunny Stream embed
+    if (
+      trimmedUrl.includes("mediadelivery.net") ||
+      trimmedUrl.includes("bunnycdn.com") ||
+      trimmedUrl.includes("b-cdn.net")
+    ) {
+      const hasQuery = trimmedUrl.includes("?");
+      const sep = hasQuery ? "&" : "?";
+      const startParam = startSeconds > 0 ? `${sep}t=${Math.floor(startSeconds)}` : "";
+      const autoplayParam = !trimmedUrl.includes("autoplay=")
+        ? `${hasQuery || startParam ? "&" : "?"}autoplay=true`
+        : "";
+      return `${trimmedUrl}${startParam}${autoplayParam}`;
+    }
+
+    // Direct / Generic embed URL
+    if (startSeconds > 0) {
+      const sep = trimmedUrl.includes("?") ? "&" : "?";
+      return `${trimmedUrl}${sep}t=${Math.floor(startSeconds)}`;
+    }
+
     return trimmedUrl;
   }, [videoUrl, startSeconds]);
 
