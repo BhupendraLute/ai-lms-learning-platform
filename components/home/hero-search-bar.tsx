@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search } from "@/components/ui/icons";
 
 export function HeroSearchBar() {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // ⌘K or Ctrl+K shortcut listener to focus search input
@@ -19,8 +22,18 @@ export function HeroSearchBar() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = query.trim();
+    if (clean) {
+      router.push(`/search?q=${encodeURIComponent(clean)}`);
+    } else {
+      router.push("/search");
+    }
+  };
+
   return (
-    <div className="w-full max-w-[680px] mx-auto mt-8">
+    <form onSubmit={handleSubmit} className="w-full max-w-[680px] mx-auto mt-8">
       <div className="relative flex items-center w-full rounded-[14px] border border-[#E2E8F0] bg-white shadow-sm transition-all duration-200 hover:border-[#CBD5E1] focus-within:border-[#FB923C] focus-within:ring-2 focus-within:ring-[#FB923C]/20">
         <div className="absolute left-4 flex items-center pointer-events-none text-[#64748B]">
           <Search className="w-5 h-5 text-[#64748B]" strokeWidth={2} />
@@ -28,6 +41,8 @@ export function HeroSearchBar() {
         <input
           ref={searchInputRef}
           type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
           placeholder="Ask anything about your learning..."
           className="h-[52px] w-full rounded-[14px] bg-transparent pl-12 pr-16 text-sm md:text-[15px] text-[#0F172A] placeholder:text-[#64748B] outline-none"
         />
@@ -37,6 +52,6 @@ export function HeroSearchBar() {
           </kbd>
         </div>
       </div>
-    </div>
+    </form>
   );
 }

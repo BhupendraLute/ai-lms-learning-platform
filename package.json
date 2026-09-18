@@ -13,7 +13,9 @@
     "studio:seed": "node studio/scripts/seed/seed.mjs",
     "studio:seed-videos": "node studio/scripts/seed/seed-videos.mjs",
     "studio:seed-context": "node studio/scripts/seed/seed-context.mjs",
-    "seed": "node studio/scripts/seed/seed.mjs"
+    "seed": "node studio/scripts/seed/seed.mjs",
+    "ingest:videos": "node studio/scripts/video-ingestion/cli.mjs --all",
+    "verify:videos": "node studio/scripts/video-ingestion/cli.mjs --verify"
   },
   "dependencies": {
     "@ai-sdk/mcp": "^2.0.50",

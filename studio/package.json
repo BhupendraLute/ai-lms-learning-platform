@@ -10,7 +10,9 @@
     "build": "sanity build",
     "deploy": "sanity deploy",
     "typegen": "sanity schemas extract && sanity typegen generate",
-    "seed": "node scripts/seed/seed.mjs"
+    "seed": "node scripts/seed/seed.mjs",
+    "ingest:videos": "node scripts/video-ingestion/cli.mjs --all",
+    "verify:videos": "node scripts/video-ingestion/cli.mjs --verify"
   },
   "dependencies": {
     "@sanity/vision": "^5.31.2",
