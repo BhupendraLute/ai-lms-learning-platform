@@ -3,7 +3,13 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import posthog from "posthog-js";
-import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
+import {
+  ClerkLoaded,
+  SignInButton,
+  SignUpButton,
+  Show,
+  UserButton,
+} from "@clerk/nextjs";
 import { AiLmsLogo, Bell, Menu, X } from "./icons";
 import { cn } from "@/lib/utils";
 
@@ -90,6 +96,10 @@ export function Navbar({
 
         {/* Right Header Controls */}
         <div className="flex items-center gap-3 sm:gap-4">
+          {/* Clerk auth state is only known in the browser. ClerkLoaded holds
+              these controls back until Clerk resolves, so the server HTML and
+              the first client render match and hydration stays stable. */}
+          <ClerkLoaded>
           <Show when="signed-out">
             <div className="hidden sm:flex items-center gap-2">
               <SignInButton mode="modal">
@@ -139,6 +149,7 @@ export function Navbar({
               )}
             </div>
           </Show>
+          </ClerkLoaded>
 
           {/* Mobile Menu Trigger Button */}
           <button

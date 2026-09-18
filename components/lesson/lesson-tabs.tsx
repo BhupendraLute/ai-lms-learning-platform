@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import { CheckCircle2, Lightbulb } from "@/components/ui/icons";
 import { LessonNotesPortableText } from "./lesson-notes-portable-text";
 import { LessonResources } from "./lesson-resources";
@@ -8,6 +8,14 @@ import { cn } from "@/lib/utils";
 import posthog from "posthog-js";
 import type { PortableTextBlock } from "@portabletext/react";
 import type { Resource } from "@/sanity/types";
+
+function readStoredNote(lessonSlug: string): string {
+  try {
+    return localStorage.getItem(`ai_lms_note_${lessonSlug}`) || "";
+  } catch {
+    return "";
+  }
+}
 
 interface LessonTabsProps {
   lessonSlug: string;
@@ -27,21 +35,21 @@ export function LessonTabs({
   summaryFallback,
 }: LessonTabsProps) {
   const [activeTab, setActiveTab] = useState<"content" | "notes">("content");
-  const [userNote, setUserNote] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        return localStorage.getItem(`ai_lms_note_${lessonSlug}`) || "";
-      } catch {
-        return "";
-      }
-    }
-    return "";
-  });
+  // The first client render must match the server HTML (an empty note), so we
+  // only read localStorage once hydrated. `draft` holds the learner's edits and
+  // takes over from the stored value as soon as they type.
+  const hydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  const [draft, setDraft] = useState<string | null>(null);
+  const userNote = draft ?? (hydrated ? readStoredNote(lessonSlug) : "");
   const [savedStatus, setSavedStatus] = useState<string | null>(null);
 
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
-    setUserNote(val);
+    setDraft(val);
     try {
       localStorage.setItem(`ai_lms_note_${lessonSlug}`, val);
       setSavedStatus("Saved locally");
