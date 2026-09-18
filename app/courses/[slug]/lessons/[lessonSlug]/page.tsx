@@ -36,7 +36,7 @@ function formatStudentCount(count?: number): string {
     const formatted = (count / 1000).toFixed(1).replace(/\.0$/, "");
     return `${formatted}k students`;
   }
-  return `${count.toLocaleString()} students`;
+  return `${count.toLocaleString("en-US")} students`;
 }
 
 // Generate static params for all published courses and lessons
