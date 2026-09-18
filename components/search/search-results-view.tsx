@@ -194,7 +194,6 @@ export function SearchResultsView({
               >
                 <option value="relevance">Most Relevant</option>
                 <option value="duration">Longest Duration</option>
-                <option value="newest">Course Order</option>
               </select>
               <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#64748B]">
                 <ChevronDown className="w-4 h-4" />

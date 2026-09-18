@@ -289,6 +289,7 @@ export const SEARCH_LESSONS_QUERY = defineQuery(`
     isFreePreview,
     keyPoints,
     proTip,
+    "notesText": pt::text(notes),
     "course": *[_type == "course" && references(^._id)][0] {
       _id,
       title,

@@ -49,11 +49,10 @@ const dataset =
 
 const token =
   process.env.SANITY_API_WRITE_TOKEN ||
-  process.env.SANITY_API_READ_TOKEN ||
   process.env.SANITY_AUTH_TOKEN;
 
 if (!token) {
-  console.error('❌ Error: SANITY_API_READ_TOKEN or write token is not set');
+  console.error('❌ Error: SANITY_API_WRITE_TOKEN or SANITY_AUTH_TOKEN is not set');
   process.exit(1);
 }
 

@@ -1,6 +1,6 @@
 import { serverClient } from './client'
 import {
-  SEARCH_ALL_COURSES_TREE_QUERY,
+  SEARCH_LESSONS_QUERY,
   SEARCH_VIDEO_CHAPTERS_QUERY,
   SEARCH_VIDEO_CHUNKS_QUERY,
 } from './queries'
@@ -66,7 +66,7 @@ export interface SearchResponse {
 }
 
 export interface SearchOptions {
-  sort?: 'relevance' | 'duration' | 'newest';
+  sort?: 'relevance' | 'duration';
   limit?: number;
 }
 
@@ -130,8 +130,9 @@ export function getOpenCodeClient() {
   });
 }
 
-export interface CourseTreeLesson {
+export interface MatchedLessonQueryResult {
   _id: string;
+  _type: string;
   title: string;
   slug?: { current?: string } | string;
   videoUrl?: string;
@@ -139,25 +140,24 @@ export interface CourseTreeLesson {
   duration?: string;
   isFreePreview?: boolean;
   keyPoints?: string[];
-  notesText?: string;
   proTip?: string;
-}
-
-export interface CourseTreeModule {
-  _key?: string;
-  title: string;
-  summary?: string;
-  lessons?: CourseTreeLesson[];
-}
-
-export interface CourseTreeItem {
-  _id: string;
-  title: string;
-  slug?: { current?: string } | string;
-  summary?: string;
-  coverImage?: unknown;
-  category?: { _id: string; title: string; slug?: { current?: string } | string };
-  modules?: CourseTreeModule[];
+  notesText?: string;
+  course?: {
+    _id: string;
+    title: string;
+    slug?: { current?: string } | string;
+    coverImage?: unknown;
+    category?: { _id: string; title: string; slug?: { current?: string } | string };
+    modules?: {
+      _key?: string;
+      title: string;
+      summary?: string;
+      lessons?: {
+        _id: string;
+        slug?: { current?: string } | string;
+      }[];
+    }[];
+  };
 }
 
 export interface VideoChapterMatch {
@@ -174,7 +174,7 @@ export interface VideoChapterQueryResult {
   title?: string;
   duration?: number;
   matchedChapters?: VideoChapterMatch[];
-  lesson?: CourseTreeLesson & { course?: CourseTreeItem };
+  lesson?: MatchedLessonQueryResult;
 }
 
 export interface VideoChunkMatch {
@@ -191,7 +191,52 @@ export interface VideoChunkQueryResult {
   title?: string;
   duration?: number;
   matchedChunks?: VideoChunkMatch[];
-  lesson?: CourseTreeLesson & { course?: CourseTreeItem };
+  lesson?: MatchedLessonQueryResult;
+}
+
+function getLessonLocation(lesson: MatchedLessonQueryResult) {
+  const course = lesson.course;
+  if (!course) return null;
+  const courseSlug = getSlugString(course.slug);
+  const lessonSlug = getSlugString(lesson.slug);
+  const courseIcon = getCourseIconType(course.title, courseSlug);
+
+  let moduleTitle = 'Module';
+  let moduleIndex = 1;
+  let lessonIndex = 1;
+  let moduleSummary: string | undefined;
+
+  if (Array.isArray(course.modules)) {
+    for (let m = 0; m < course.modules.length; m++) {
+      const mod = course.modules[m];
+      if (mod?.lessons && Array.isArray(mod.lessons)) {
+        const lIdx = mod.lessons.findIndex(
+          (l) => l._id === lesson._id || (l.slug && getSlugString(l.slug) === lessonSlug)
+        );
+        if (lIdx !== -1) {
+          moduleIndex = m + 1;
+          lessonIndex = lIdx + 1;
+          moduleTitle = mod.title || `Module ${m + 1}`;
+          moduleSummary = mod.summary;
+          break;
+        }
+      }
+    }
+  }
+
+  const lessonNumber = `Lesson ${moduleIndex}.${lessonIndex}`;
+
+  return {
+    course,
+    courseSlug,
+    courseTitle: course.title,
+    courseIcon,
+    moduleTitle,
+    moduleIndex,
+    lessonIndex,
+    lessonNumber,
+    moduleSummary,
+  };
 }
 
 // Cache for initial-context schema
@@ -254,81 +299,57 @@ export async function searchLearningPlatform(
   const term = `*${cleanQuery}*`;
   const wildcard = searchTokens.length > 0 ? `*${searchTokens.join('* *')}*` : `*${cleanQuery}*`;
 
-  // Fetch structural course tree and timestamped video matches in parallel
-  const [coursesTree, videoChaptersResult, videoChunksResult] = await Promise.all([
-    serverClient.fetch<CourseTreeItem[]>(SEARCH_ALL_COURSES_TREE_QUERY).catch((err) => {
-      console.error('Error fetching course tree for search:', err);
-      return [];
-    }),
-    serverClient.fetch<VideoChapterQueryResult[]>(SEARCH_VIDEO_CHAPTERS_QUERY, { term, wildcard }).catch((err) => {
-      console.error('Error fetching video chapters for search:', err);
-      return [];
-    }),
-    serverClient.fetch<VideoChunkQueryResult[]>(SEARCH_VIDEO_CHUNKS_QUERY, { term, wildcard }).catch((err) => {
-      console.error('Error fetching video chunks for search:', err);
-      return [];
-    }),
+  // 1. Fetch targeted matched lessons (let errors propagate)
+  const matchedLessonsPromise = serverClient.fetch<MatchedLessonQueryResult[]>(
+    SEARCH_LESSONS_QUERY,
+    { term, wildcard }
+  );
+
+  // 2. Fetch video chapters and chunks (throw error if both fail, preserve partial if one succeeds)
+  const [matchedLessons, chaptersSettled, chunksSettled] = await Promise.all([
+    matchedLessonsPromise,
+    serverClient
+      .fetch<VideoChapterQueryResult[]>(SEARCH_VIDEO_CHAPTERS_QUERY, { term, wildcard })
+      .then((data) => ({ ok: true as const, data }))
+      .catch((err) => {
+        console.error('Error fetching video chapters for search:', err);
+        return { ok: false as const, error: err instanceof Error ? err : new Error(String(err)) };
+      }),
+    serverClient
+      .fetch<VideoChunkQueryResult[]>(SEARCH_VIDEO_CHUNKS_QUERY, { term, wildcard })
+      .then((data) => ({ ok: true as const, data }))
+      .catch((err) => {
+        console.error('Error fetching video chunks for search:', err);
+        return { ok: false as const, error: err instanceof Error ? err : new Error(String(err)) };
+      }),
   ]);
+
+  if (!chaptersSettled.ok && !chunksSettled.ok) {
+    throw new Error(
+      `Video searches failed: ${chaptersSettled.error.message}; ${chunksSettled.error.message}`
+    );
+  }
+
+  const videoChaptersResult = chaptersSettled.ok ? chaptersSettled.data : [];
+  const videoChunksResult = chunksSettled.ok ? chunksSettled.data : [];
 
   const videoResultsMap = new Map<string, SearchResultVideo>();
   const lessonResultsMap = new Map<string, SearchResultLesson>();
   const touchedCourses = new Set<string>();
 
-  // Helper map: lesson ID / slug -> { course, module, moduleIndex, lessonIndex, lesson }
-  interface LessonLocation {
-    course: CourseTreeItem;
-    module: CourseTreeModule;
-    moduleIndex: number;
-    lessonIndex: number;
-    lesson: CourseTreeLesson;
-    lessonNumber: string;
-  }
-
-  const lessonLookup = new Map<string, LessonLocation>();
-  const lessonByVideoUrl = new Map<string, LessonLocation>();
-
-  if (Array.isArray(coursesTree)) {
-    for (const course of coursesTree) {
-      if (!course?.modules) continue;
-      for (let mIdx = 0; mIdx < course.modules.length; mIdx++) {
-        const mod = course.modules[mIdx];
-        if (!mod?.lessons) continue;
-        for (let lIdx = 0; lIdx < mod.lessons.length; lIdx++) {
-          const les = mod.lessons[lIdx];
-          if (!les) continue;
-          const lessonNumber = `Lesson ${mIdx + 1}.${lIdx + 1}`;
-          const loc: LessonLocation = {
-            course,
-            module: mod,
-            moduleIndex: mIdx + 1,
-            lessonIndex: lIdx + 1,
-            lesson: les,
-            lessonNumber,
-          };
-          const lessonSlugStr = getSlugString(les.slug);
-          if (les._id) lessonLookup.set(les._id, loc);
-          if (lessonSlugStr) lessonLookup.set(lessonSlugStr, loc);
-          if (les.videoUrl) lessonByVideoUrl.set(les.videoUrl, loc);
-        }
-      }
-    }
-  }
-
   // 1. STAGE 1: Match Video Chapters (Primary Timestamp Resolution)
   if (Array.isArray(videoChaptersResult)) {
     for (const item of videoChaptersResult) {
-      const videoUrl = item.url;
-      const loc = (videoUrl ? lessonByVideoUrl.get(videoUrl) : null) || (item.lesson?._id ? lessonLookup.get(item.lesson._id) : null);
+      if (!item.lesson) continue;
+      const loc = getLessonLocation(item.lesson);
       if (!loc) continue;
 
       const matchedChapters = item.matchedChapters || [];
       for (const ch of matchedChapters) {
         const startSeconds = typeof ch.startSeconds === 'number' ? ch.startSeconds : 0;
         const formattedTimestamp = formatSeconds(startSeconds);
-        const courseSlug = getSlugString(loc.course.slug);
-        const lessonSlug = getSlugString(loc.lesson.slug);
-        const courseIcon = getCourseIconType(loc.course.title, courseSlug);
-        const thumbUrl = urlForImage(loc.lesson.poster as SanityImageSource) || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`;
+        const lessonSlug = getSlugString(item.lesson.slug);
+        const thumbUrl = urlForImage(item.lesson.poster as SanityImageSource) || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`;
 
         // Calculate score
         const labelLower = (ch.label || '').toLowerCase();
@@ -339,28 +360,28 @@ export async function searchLearningPlatform(
           if (labelLower.includes(tok)) score += 10;
         });
 
-        const key = `${loc.lesson._id}-ch-${startSeconds}`;
+        const key = `${item.lesson._id}-ch-${startSeconds}`;
         videoResultsMap.set(key, {
           id: key,
-          courseTitle: loc.course.title,
-          courseSlug,
-          courseIcon,
-          moduleTitle: loc.module.title,
+          courseTitle: loc.courseTitle,
+          courseSlug: loc.courseSlug,
+          courseIcon: loc.courseIcon,
+          moduleTitle: loc.moduleTitle,
           moduleNumber: loc.moduleIndex,
-          lessonTitle: loc.lesson.title,
+          lessonTitle: item.lesson.title,
           lessonSlug,
           lessonNumber: loc.lessonNumber,
           thumbnailUrl: thumbUrl,
-          duration: loc.lesson.duration || '10:00',
+          duration: item.lesson.duration || '10:00',
           startSeconds,
           formattedTimestamp,
-          description: ch.label || `Learn ${loc.lesson.title} in depth.`,
+          description: ch.label || `Learn ${item.lesson.title} in depth.`,
           matchType: 'chapter',
-          watchUrl: `/courses/${courseSlug}/lessons/${lessonSlug}?start=${startSeconds}`,
+          watchUrl: `/courses/${loc.courseSlug}/lessons/${lessonSlug}?start=${startSeconds}`,
           score,
         });
 
-        touchedCourses.add(courseSlug);
+        touchedCourses.add(loc.courseSlug);
       }
     }
   }
@@ -368,12 +389,11 @@ export async function searchLearningPlatform(
   // 2. STAGE 2: Match Video Transcript Chunks (Fallback Timestamp Resolution)
   if (Array.isArray(videoChunksResult)) {
     for (const item of videoChunksResult) {
-      const videoUrl = item.url;
-      const loc = (videoUrl ? lessonByVideoUrl.get(videoUrl) : null) || (item.lesson?._id ? lessonLookup.get(item.lesson._id) : null);
+      if (!item.lesson) continue;
+      const loc = getLessonLocation(item.lesson);
       if (!loc) continue;
 
-      const courseSlug = getSlugString(loc.course.slug);
-      const lessonSlug = getSlugString(loc.lesson.slug);
+      const lessonSlug = getSlugString(item.lesson.slug);
 
       // If we already have chapter matches for this lesson, skip chunk noise (Section 7 Two-Stage rule)
       const hasChapterMatch = Array.from(videoResultsMap.values()).some(
@@ -385,8 +405,7 @@ export async function searchLearningPlatform(
       for (const chunk of matchedChunks) {
         const startSeconds = typeof chunk.startSeconds === 'number' ? chunk.startSeconds : 0;
         const formattedTimestamp = formatSeconds(startSeconds);
-        const courseIcon = getCourseIconType(loc.course.title, courseSlug);
-        const thumbUrl = urlForImage(loc.lesson.poster as SanityImageSource) || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`;
+        const thumbUrl = urlForImage(item.lesson.poster as SanityImageSource) || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`;
 
         const chunkLower = (chunk.text || '').toLowerCase();
         let score = 30;
@@ -395,158 +414,147 @@ export async function searchLearningPlatform(
           if (chunkLower.includes(tok)) score += 5;
         });
 
-        const key = `${loc.lesson._id}-chunk-${startSeconds}`;
+        const key = `${item.lesson._id}-chunk-${startSeconds}`;
         if (!videoResultsMap.has(key)) {
           videoResultsMap.set(key, {
             id: key,
-            courseTitle: loc.course.title,
-            courseSlug,
-            courseIcon,
-            moduleTitle: loc.module.title,
+            courseTitle: loc.courseTitle,
+            courseSlug: loc.courseSlug,
+            courseIcon: loc.courseIcon,
+            moduleTitle: loc.moduleTitle,
             moduleNumber: loc.moduleIndex,
-            lessonTitle: loc.lesson.title,
+            lessonTitle: item.lesson.title,
             lessonSlug,
             lessonNumber: loc.lessonNumber,
             thumbnailUrl: thumbUrl,
-            duration: loc.lesson.duration || '10:00',
+            duration: item.lesson.duration || '10:00',
             startSeconds,
             formattedTimestamp,
-            description: chunk.text || `Discussion in ${loc.lesson.title}.`,
+            description: chunk.text || `Discussion in ${item.lesson.title}.`,
             matchType: 'transcript',
-            watchUrl: `/courses/${courseSlug}/lessons/${lessonSlug}?start=${startSeconds}`,
+            watchUrl: `/courses/${loc.courseSlug}/lessons/${lessonSlug}?start=${startSeconds}`,
             score,
           });
         }
 
-        touchedCourses.add(courseSlug);
+        touchedCourses.add(loc.courseSlug);
       }
     }
   }
 
   // 3. Match Lessons on Topic (Title, Key Points, Notes, Summary)
-  if (Array.isArray(coursesTree)) {
-    for (const course of coursesTree) {
-      if (!course?.modules) continue;
-      const courseSlug = getSlugString(course.slug);
-      const courseIcon = getCourseIconType(course.title, courseSlug);
+  if (Array.isArray(matchedLessons)) {
+    for (const les of matchedLessons) {
+      const loc = getLessonLocation(les);
+      if (!loc) continue;
 
-      for (let mIdx = 0; mIdx < course.modules.length; mIdx++) {
-        const mod = course.modules[mIdx];
-        if (!mod?.lessons) continue;
-        for (let lIdx = 0; lIdx < mod.lessons.length; lIdx++) {
-          const les = mod.lessons[lIdx];
-          if (!les) continue;
-          const lessonSlug = getSlugString(les.slug);
-          const lessonNumber = `Lesson ${mIdx + 1}.${lIdx + 1}`;
+      const lessonSlug = getSlugString(les.slug);
+      const titleLower = (les.title || '').toLowerCase();
+      const notesLower = (les.notesText || '').toLowerCase();
+      const proTipLower = (les.proTip || '').toLowerCase();
+      const keyPointsArr: string[] = Array.isArray(les.keyPoints) ? les.keyPoints : [];
+      const keyPointsLower = keyPointsArr.join(' ').toLowerCase();
+      const moduleLower = loc.moduleTitle.toLowerCase();
+      const courseLower = loc.courseTitle.toLowerCase();
 
-          const titleLower = (les.title || '').toLowerCase();
-          const notesLower = (les.notesText || '').toLowerCase();
-          const proTipLower = (les.proTip || '').toLowerCase();
-          const keyPointsArr: string[] = Array.isArray(les.keyPoints) ? les.keyPoints : [];
-          const keyPointsLower = keyPointsArr.join(' ').toLowerCase();
-          const moduleLower = (mod.title || '').toLowerCase();
-          const courseLower = (course.title || '').toLowerCase();
+      let score = 0;
+      let isMatch = false;
 
-          let score = 0;
-          let isMatch = false;
+      // Exact phrase match in lesson title
+      if (titleLower === cleanQuery) {
+        score += 120;
+        isMatch = true;
+      } else if (titleLower.includes(cleanQuery)) {
+        score += 80;
+        isMatch = true;
+      }
 
-          // Exact phrase match in lesson title
-          if (titleLower === cleanQuery) {
-            score += 120;
-            isMatch = true;
-          } else if (titleLower.includes(cleanQuery)) {
-            score += 80;
-            isMatch = true;
-          }
+      // Match in key points
+      if (keyPointsLower.includes(cleanQuery)) {
+        score += 60;
+        isMatch = true;
+      }
 
-          // Match in key points
-          if (keyPointsLower.includes(cleanQuery)) {
-            score += 60;
-            isMatch = true;
-          }
+      // Match in notes / pro tip
+      if (notesLower.includes(cleanQuery) || proTipLower.includes(cleanQuery)) {
+        score += 40;
+        isMatch = true;
+      }
 
-          // Match in notes / pro tip
-          if (notesLower.includes(cleanQuery) || proTipLower.includes(cleanQuery)) {
-            score += 40;
-            isMatch = true;
-          }
+      // Match in module or course title
+      if (moduleLower.includes(cleanQuery) || courseLower.includes(cleanQuery)) {
+        score += 25;
+        isMatch = true;
+      }
 
-          // Match in module or course title
-          if (moduleLower.includes(cleanQuery) || courseLower.includes(cleanQuery)) {
-            score += 25;
-            isMatch = true;
-          }
+      // Individual token matching
+      for (const tok of searchTokens) {
+        if (titleLower.includes(tok)) {
+          score += 20;
+          isMatch = true;
+        }
+        if (keyPointsLower.includes(tok)) {
+          score += 15;
+          isMatch = true;
+        }
+        if (notesLower.includes(tok)) {
+          score += 10;
+          isMatch = true;
+        }
+      }
 
-          // Individual token matching
-          for (const tok of searchTokens) {
-            if (titleLower.includes(tok)) {
-              score += 20;
-              isMatch = true;
-            }
-            if (keyPointsLower.includes(tok)) {
-              score += 15;
-              isMatch = true;
-            }
-            if (notesLower.includes(tok)) {
-              score += 10;
-              isMatch = true;
-            }
-          }
+      if (isMatch) {
+        touchedCourses.add(loc.courseSlug);
 
-          if (isMatch) {
-            touchedCourses.add(courseSlug);
+        // Add as Lesson Result card
+        const description =
+          les.proTip ||
+          (keyPointsArr.length > 0 ? keyPointsArr[0] : null) ||
+          loc.moduleSummary ||
+          `In-depth guide to ${les.title}.`;
 
-            // Add as Lesson Result card
-            const description =
-              les.proTip ||
-              (keyPointsArr.length > 0 ? keyPointsArr[0] : null) ||
-              mod.summary ||
-              `In-depth guide to ${les.title}.`;
+        lessonResultsMap.set(les._id || lessonSlug, {
+          id: les._id || lessonSlug,
+          courseTitle: loc.courseTitle,
+          courseSlug: loc.courseSlug,
+          courseIcon: loc.courseIcon,
+          moduleTitle: loc.moduleTitle,
+          moduleNumber: loc.moduleIndex,
+          lessonTitle: les.title,
+          lessonSlug,
+          lessonNumber: loc.lessonNumber,
+          keyPoints: keyPointsArr.slice(0, 3),
+          description,
+          lessonUrl: `/courses/${loc.courseSlug}/lessons/${lessonSlug}`,
+          score,
+        });
 
-            lessonResultsMap.set(les._id || lessonSlug, {
-              id: les._id || lessonSlug,
-              courseTitle: course.title,
-              courseSlug,
-              courseIcon,
-              moduleTitle: mod.title,
-              moduleNumber: mIdx + 1,
-              lessonTitle: les.title,
-              lessonSlug,
-              lessonNumber,
-              keyPoints: keyPointsArr.slice(0, 3),
-              description,
-              lessonUrl: `/courses/${courseSlug}/lessons/${lessonSlug}`,
-              score,
-            });
+        // Also ensure a high-quality video moment card is created if not already matched
+        const videoKey = `${les._id}-top`;
+        if (!videoResultsMap.has(videoKey)) {
+          const startSeconds = 0;
+          const formattedTimestamp = formatSeconds(startSeconds);
+          const thumbUrl = urlForImage(les.poster as SanityImageSource) || `https://i.ytimg.com/vi/default/hqdefault.jpg`;
 
-            // Also ensure a high-quality video moment card is created if not already matched
-            const videoKey = `${les._id}-top`;
-            if (!videoResultsMap.has(videoKey)) {
-              const startSeconds = 0;
-              const formattedTimestamp = formatSeconds(startSeconds);
-              const thumbUrl = urlForImage(les.poster as SanityImageSource) || `https://i.ytimg.com/vi/default/hqdefault.jpg`;
-
-              videoResultsMap.set(videoKey, {
-                id: videoKey,
-                courseTitle: course.title,
-                courseSlug,
-                courseIcon,
-                moduleTitle: mod.title,
-                moduleNumber: mIdx + 1,
-                lessonTitle: les.title,
-                lessonSlug,
-                lessonNumber,
-                thumbnailUrl: thumbUrl,
-                duration: les.duration || '10:00',
-                startSeconds,
-                formattedTimestamp,
-                description: les.notesText?.slice(0, 140) || description,
-                matchType: 'topic',
-                watchUrl: `/courses/${courseSlug}/lessons/${lessonSlug}?start=0`,
-                score: score - 5,
-              });
-            }
-          }
+          videoResultsMap.set(videoKey, {
+            id: videoKey,
+            courseTitle: loc.courseTitle,
+            courseSlug: loc.courseSlug,
+            courseIcon: loc.courseIcon,
+            moduleTitle: loc.moduleTitle,
+            moduleNumber: loc.moduleIndex,
+            lessonTitle: les.title,
+            lessonSlug,
+            lessonNumber: loc.lessonNumber,
+            thumbnailUrl: thumbUrl,
+            duration: les.duration || '10:00',
+            startSeconds,
+            formattedTimestamp,
+            description: les.notesText?.slice(0, 140) || description,
+            matchType: 'topic',
+            watchUrl: `/courses/${loc.courseSlug}/lessons/${lessonSlug}?start=0`,
+            score: score - 5,
+          });
         }
       }
     }
