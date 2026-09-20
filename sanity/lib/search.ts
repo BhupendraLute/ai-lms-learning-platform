@@ -4,7 +4,7 @@ import {
   SEARCH_VIDEO_CHAPTERS_QUERY,
   SEARCH_VIDEO_CHUNKS_QUERY,
 } from './queries'
-import { urlForImage } from './image'
+import { imageUrl } from './image'
 import type { SanityImageSource } from '@sanity/image-url'
 import { createOpenAI } from '@ai-sdk/openai'
 
@@ -349,7 +349,7 @@ export async function searchLearningPlatform(
         const startSeconds = typeof ch.startSeconds === 'number' ? ch.startSeconds : 0;
         const formattedTimestamp = formatSeconds(startSeconds);
         const lessonSlug = getSlugString(item.lesson.slug);
-        const thumbUrl = urlForImage(item.lesson.poster as SanityImageSource) || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`;
+        const thumbUrl = imageUrl(item.lesson.poster as SanityImageSource) || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`;
 
         // Calculate score
         const labelLower = (ch.label || '').toLowerCase();
@@ -405,7 +405,7 @@ export async function searchLearningPlatform(
       for (const chunk of matchedChunks) {
         const startSeconds = typeof chunk.startSeconds === 'number' ? chunk.startSeconds : 0;
         const formattedTimestamp = formatSeconds(startSeconds);
-        const thumbUrl = urlForImage(item.lesson.poster as SanityImageSource) || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`;
+        const thumbUrl = imageUrl(item.lesson.poster as SanityImageSource) || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`;
 
         const chunkLower = (chunk.text || '').toLowerCase();
         let score = 30;
@@ -534,7 +534,7 @@ export async function searchLearningPlatform(
         if (!videoResultsMap.has(videoKey)) {
           const startSeconds = 0;
           const formattedTimestamp = formatSeconds(startSeconds);
-          const thumbUrl = urlForImage(les.poster as SanityImageSource) || `https://i.ytimg.com/vi/default/hqdefault.jpg`;
+          const thumbUrl = imageUrl(les.poster as SanityImageSource) || `https://i.ytimg.com/vi/default/hqdefault.jpg`;
 
           videoResultsMap.set(videoKey, {
             id: videoKey,
