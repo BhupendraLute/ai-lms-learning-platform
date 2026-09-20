@@ -99,7 +99,7 @@ export default async function CoursesPage() {
       <Navbar activePath="/courses" />
 
       <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 sm:px-6 md:px-12 py-8 sm:py-12">
-        <CatalogViewTracker totalCoursesCount={coursesList.length} />
+        <CatalogViewTracker totalCourses={coursesList.length} />
         <div className="mb-6">
           <Breadcrumbs
             items={[

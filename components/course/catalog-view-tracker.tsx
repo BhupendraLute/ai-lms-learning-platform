@@ -4,13 +4,13 @@ import { useEffect } from "react";
 import { trackCatalogViewed } from "@/lib/analytics";
 
 interface CatalogViewTrackerProps {
-  totalCoursesCount?: number;
+  totalCourses?: number;
 }
 
-export function CatalogViewTracker({ totalCoursesCount }: CatalogViewTrackerProps) {
+export function CatalogViewTracker({ totalCourses }: CatalogViewTrackerProps) {
   useEffect(() => {
-    trackCatalogViewed({ totalCoursesCount });
-  }, [totalCoursesCount]);
+    trackCatalogViewed({ totalCourses });
+  }, [totalCourses]);
 
   return null;
 }

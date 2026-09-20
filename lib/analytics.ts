@@ -92,7 +92,7 @@ export interface TrackLessonCompletedParams {
 }
 
 export interface TrackCatalogViewedParams {
-  totalCoursesCount?: number;
+  totalCourses?: number;
 }
 
 export interface TrackCourseViewedParams {
@@ -229,7 +229,7 @@ export function trackLessonCompleted(params: TrackLessonCompletedParams) {
 
 export function trackCatalogViewed(params: TrackCatalogViewedParams = {}) {
   safeCapture("catalog_viewed", {
-    total_courses_count: params.totalCoursesCount,
+    total_courses: params.totalCourses,
   });
 }
 

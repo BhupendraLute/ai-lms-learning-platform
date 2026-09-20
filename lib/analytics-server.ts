@@ -28,7 +28,7 @@ export async function captureServerEvent({
   const url = `${normalizedHost}/capture/`;
 
   try {
-    await fetch(url, {
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -46,6 +46,12 @@ export async function captureServerEvent({
       // Fire-and-forget timeout so request latency is unaffected
       signal: AbortSignal.timeout(2000),
     });
+
+    if (!res.ok) {
+      throw new Error(
+        `PostHog server capture failed with HTTP status ${res.status} ${res.statusText}`
+      );
+    }
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
       console.warn(`[PostHog Server Analytics] Failed to capture "${event}":`, error);

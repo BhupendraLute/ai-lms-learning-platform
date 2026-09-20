@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Image from "next/image";
 import { Play } from "@/components/ui/icons";
 import { imageUrl } from "@/sanity/lib/image";
@@ -72,6 +72,8 @@ function parseDurationInSeconds(dur?: string | number): number {
   return 600;
 }
 
+const MILESTONES: (25 | 50 | 75 | 90 | 100)[] = [25, 50, 75, 90, 100];
+
 export function LessonVideoPlayer({
   courseSlug,
   lessonSlug,
@@ -83,12 +85,14 @@ export function LessonVideoPlayer({
 }: LessonVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const provider = useMemo(() => detectProvider(videoUrl), [videoUrl]);
-  const totalDurationSeconds = useMemo(() => parseDurationInSeconds(duration), [duration]);
+  const fallbackDurationSeconds = useMemo(() => parseDurationInSeconds(duration), [duration]);
 
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const hasTrackedPlay = useRef(false);
+  const isPlaybackActive = useRef(false);
   const milestonesFired = useRef<Set<number>>(new Set());
-  const secondsWatchedRef = useRef(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const reportedDurationRef = useRef<number>(fallbackDurationSeconds);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Derive poster image URL
   const posterUrl = poster ? imageUrl(poster) : null;
@@ -133,12 +137,8 @@ export function LessonVideoPlayer({
     return trimmedUrl;
   }, [videoUrl, startSeconds]);
 
-  // Video playback initiation & watch depth milestone monitor
-  useEffect(() => {
-    const isPlaybackActive = (isPlaying || startSeconds > 0) && Boolean(embedSrc);
-    if (!isPlaybackActive) return;
-
-    // 1. Fire video_played once per session/lesson
+  // Helper to trigger video_played event
+  const triggerVideoPlayed = useCallback(() => {
     if (!hasTrackedPlay.current) {
       hasTrackedPlay.current = true;
       trackVideoPlayed({
@@ -151,54 +151,201 @@ export function LessonVideoPlayer({
         provider,
       });
     }
+  }, [courseSlug, lessonSlug, title, videoUrl, startSeconds, isPlaying, provider]);
 
-    // 2. Start watch depth tracking ticker
-    const MILESTONES: (25 | 50 | 75 | 90 | 100)[] = [25, 50, 75, 90, 100];
-    const TICK_INTERVAL_MS = 2000;
+  // Helper to check milestone percentages against reported playback time and duration
+  const checkMilestones = useCallback(
+    (currentTime: number, videoDuration?: number) => {
+      const totalDur = videoDuration && videoDuration > 0
+        ? videoDuration
+        : reportedDurationRef.current;
 
-    intervalRef.current = setInterval(() => {
-      secondsWatchedRef.current += TICK_INTERVAL_MS / 1000;
-      const currentSimulatedPosition = (startSeconds || 0) + secondsWatchedRef.current;
-      const currentPercentage = Math.min(
-        100,
-        Math.floor((currentSimulatedPosition / Math.max(totalDurationSeconds, 1)) * 100)
-      );
+      if (totalDur <= 0 || currentTime <= 0) return;
+
+      const percentage = Math.min(100, Math.floor((currentTime / totalDur) * 100));
 
       for (const milestone of MILESTONES) {
-        if (currentPercentage >= milestone && !milestonesFired.current.has(milestone)) {
+        if (percentage >= milestone && !milestonesFired.current.has(milestone)) {
           milestonesFired.current.add(milestone);
           trackVideoWatchDepth({
             courseSlug,
             lessonSlug,
             lessonTitle: title,
             depthPercentage: milestone,
-            secondsWatched: Math.round(secondsWatchedRef.current),
-            videoDurationSeconds: totalDurationSeconds,
+            secondsWatched: Math.round(currentTime),
+            videoDurationSeconds: Math.round(totalDur),
             provider,
           });
         }
       }
-    }, TICK_INTERVAL_MS);
+    },
+    [courseSlug, lessonSlug, title, provider]
+  );
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+  // Send handshake message to player iframe
+  const initIframeHandshake = useCallback(() => {
+    const target = iframeRef.current?.contentWindow;
+    if (!target) return;
+
+    try {
+      if (provider === "youtube") {
+        target.postMessage(JSON.stringify({ event: "listening" }), "*");
+        target.postMessage(
+          JSON.stringify({
+            event: "command",
+            func: "addEventListener",
+            args: ["onStateChange"],
+          }),
+          "*"
+        );
+      } else if (provider === "vimeo") {
+        target.postMessage(JSON.stringify({ method: "addEventListener", value: "play" }), "*");
+        target.postMessage(JSON.stringify({ method: "addEventListener", value: "pause" }), "*");
+        target.postMessage(JSON.stringify({ method: "addEventListener", value: "timeupdate" }), "*");
+        target.postMessage(JSON.stringify({ method: "addEventListener", value: "ended" }), "*");
+      } else if (provider === "bunny") {
+        target.postMessage(JSON.stringify({ action: "play" }), "*");
+      }
+    } catch {
+      // Ignore cross-origin postMessage dispatch errors
+    }
+  }, [provider]);
+
+  // Handle provider message events
+  useEffect(() => {
+    const handleWindowMessage = (event: MessageEvent) => {
+      if (!event.data) return;
+
+      let payload = event.data;
+      if (typeof payload === "string") {
+        try {
+          payload = JSON.parse(payload);
+        } catch {
+          return;
+        }
+      }
+
+      if (typeof payload !== "object" || payload === null) return;
+
+      // 1. YouTube Player Messages
+      if (provider === "youtube") {
+        // YouTube onStateChange: 1 = PLAYING, 2 = PAUSED, 0 = ENDED
+        if (payload.event === "onStateChange") {
+          if (payload.data === 1) {
+            isPlaybackActive.current = true;
+            triggerVideoPlayed();
+          } else if (payload.data === 2 || payload.data === 0) {
+            isPlaybackActive.current = false;
+          }
+        }
+
+        // YouTube infoDelivery: contains currentTime, duration, playerState
+        if (payload.event === "infoDelivery" && payload.info) {
+          const { currentTime, duration: ytDuration, playerState } = payload.info;
+
+          if (playerState === 1) {
+            isPlaybackActive.current = true;
+            triggerVideoPlayed();
+          } else if (playerState === 2 || playerState === 0) {
+            isPlaybackActive.current = false;
+          }
+
+          if (typeof ytDuration === "number" && ytDuration > 0) {
+            reportedDurationRef.current = ytDuration;
+          }
+
+          if (typeof currentTime === "number") {
+            checkMilestones(currentTime, reportedDurationRef.current);
+          }
+        }
+      }
+
+      // 2. Vimeo Player Messages
+      if (provider === "vimeo") {
+        if (payload.event === "play") {
+          isPlaybackActive.current = true;
+          triggerVideoPlayed();
+        } else if (payload.event === "pause" || payload.event === "ended") {
+          isPlaybackActive.current = false;
+        } else if (payload.event === "timeupdate" && payload.data) {
+          isPlaybackActive.current = true;
+          triggerVideoPlayed();
+
+          const { seconds, duration: vimeoDuration } = payload.data;
+          if (typeof vimeoDuration === "number" && vimeoDuration > 0) {
+            reportedDurationRef.current = vimeoDuration;
+          }
+          if (typeof seconds === "number") {
+            checkMilestones(seconds, reportedDurationRef.current);
+          }
+        }
+      }
+
+      // 3. Bunny / Generic Player Messages
+      if (provider === "bunny" || provider === "generic") {
+        const evt = payload.event || payload.type;
+        if (evt === "play" || evt === "playing") {
+          isPlaybackActive.current = true;
+          triggerVideoPlayed();
+        } else if (evt === "pause" || evt === "ended") {
+          isPlaybackActive.current = false;
+        } else if (evt === "timeupdate" || typeof payload.currentTime === "number") {
+          isPlaybackActive.current = true;
+          triggerVideoPlayed();
+
+          const time = payload.currentTime ?? payload.seconds;
+          const dur = payload.duration ?? reportedDurationRef.current;
+          if (typeof dur === "number" && dur > 0) {
+            reportedDurationRef.current = dur;
+          }
+          if (typeof time === "number") {
+            checkMilestones(time, reportedDurationRef.current);
+          }
+        }
       }
     };
-  }, [
-    isPlaying,
-    startSeconds,
-    embedSrc,
-    courseSlug,
-    lessonSlug,
-    title,
-    videoUrl,
-    provider,
-    totalDurationSeconds,
-  ]);
+
+    window.addEventListener("message", handleWindowMessage);
+    return () => {
+      window.removeEventListener("message", handleWindowMessage);
+    };
+  }, [provider, triggerVideoPlayed, checkMilestones]);
+
+  // Periodic polling for providers requiring command polls while active
+  useEffect(() => {
+    const isVisible = isPlaying || startSeconds > 0;
+    if (!isVisible) return;
+
+    triggerVideoPlayed();
+
+    pollingIntervalRef.current = setInterval(() => {
+      const target = iframeRef.current?.contentWindow;
+      if (!target) return;
+
+      try {
+        if (provider === "youtube") {
+          target.postMessage(
+            JSON.stringify({ event: "command", func: "getCurrentTime" }),
+            "*"
+          );
+        } else if (provider === "vimeo") {
+          target.postMessage(JSON.stringify({ method: "getCurrentTime" }), "*");
+        }
+      } catch {
+        // Ignore cross-origin postMessage errors
+      }
+    }, 2500);
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [isPlaying, startSeconds, provider, triggerVideoPlayed]);
 
   const handlePlayButtonClick = () => {
     setIsPlaying(true);
+    triggerVideoPlayed();
   };
 
   // If autoplayed or user clicked play, show the iframe embed
@@ -206,10 +353,12 @@ export function LessonVideoPlayer({
     <div className="w-full rounded-[16px] overflow-hidden bg-[#0F172A] aspect-video relative shadow-md group border border-[#1E293B]">
       {embedSrc && (isPlaying || startSeconds > 0) ? (
         <iframe
+          ref={iframeRef}
           src={embedSrc}
           title={title}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
+          onLoad={initIframeHandshake}
           className="w-full h-full border-0 absolute inset-0"
         />
       ) : embedSrc ? (
