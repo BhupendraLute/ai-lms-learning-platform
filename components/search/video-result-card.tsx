@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import posthog from "posthog-js";
+import { trackSearchResultOpened } from "@/lib/analytics";
 import { Play, FileText, ChevronRight, Bookmark } from "@/components/ui/icons";
 import { CourseIconBadge } from "./course-icon-badge";
 import type { SearchResultVideo } from "@/sanity/lib/search";
@@ -11,25 +11,24 @@ import type { SearchResultVideo } from "@/sanity/lib/search";
 interface VideoResultCardProps {
   result: SearchResultVideo;
   query?: string;
+  position?: number;
 }
 
-export function VideoResultCard({ result, query = "" }: VideoResultCardProps) {
+export function VideoResultCard({ result, query = "", position }: VideoResultCardProps) {
   const handleClick = () => {
-    if (
-      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
-      process.env.NEXT_PUBLIC_POSTHOG_HOST
-    ) {
-      posthog.capture("search_result_clicked", {
-        query,
-        result_type: "video",
-        match_type: result.matchType,
-        lesson_slug: result.lessonSlug,
-        course_slug: result.courseSlug,
-        start_seconds: result.startSeconds,
-        formatted_timestamp: result.formattedTimestamp,
-        lesson_title: result.lessonTitle,
-      });
-    }
+    trackSearchResultOpened({
+      query,
+      resultType: "video",
+      matchType: result.matchType,
+      lessonSlug: result.lessonSlug,
+      lessonTitle: result.lessonTitle,
+      courseSlug: result.courseSlug,
+      courseTitle: result.courseTitle,
+      startSeconds: result.startSeconds,
+      formattedTimestamp: result.formattedTimestamp,
+      destinationUrl: result.watchUrl,
+      position,
+    });
   };
 
   return (

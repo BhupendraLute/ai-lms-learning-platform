@@ -2,16 +2,18 @@
 
 import React from "react";
 import Link from "next/link";
-import posthog from "posthog-js";
 import { ArrowRight } from "@/components/ui/icons";
+import { trackResumeUsed } from "@/lib/analytics";
 
 interface CourseBottomProgressProps {
+  courseSlug?: string;
   percentage?: number;
   continueHref?: string;
   className?: string;
 }
 
 export function CourseBottomProgress({
+  courseSlug,
   percentage = 35,
   continueHref = "#",
   className = "",
@@ -19,15 +21,11 @@ export function CourseBottomProgress({
   const clamped = Math.min(Math.max(percentage, 0), 100);
 
   const captureContinueLearning = () => {
-    if (
-      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
-      process.env.NEXT_PUBLIC_POSTHOG_HOST
-    ) {
-      posthog.capture("continue_learning_clicked", {
-        progress_percentage: clamped,
-        source: "course_progress",
-      });
-    }
+    trackResumeUsed({
+      courseSlug,
+      progressPercentage: clamped,
+      source: "course_bottom_bar",
+    });
   };
 
   return (

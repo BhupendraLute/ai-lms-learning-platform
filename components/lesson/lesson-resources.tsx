@@ -9,11 +9,12 @@ import {
   Code,
   Sparkles,
 } from "@/components/ui/icons";
-import posthog from "posthog-js";
+import { trackLessonResourceClicked } from "@/lib/analytics";
 import type { Resource } from "@/sanity/types";
 
 interface LessonResourcesProps {
   resources?: Resource[];
+  lessonSlug?: string;
 }
 
 function ResourceIcon({ type }: { type: string }) {
@@ -50,22 +51,18 @@ function ResourceIcon({ type }: { type: string }) {
   );
 }
 
-export function LessonResources({ resources = [] }: LessonResourcesProps) {
+export function LessonResources({ resources = [], lessonSlug }: LessonResourcesProps) {
   if (!resources || resources.length === 0) {
     return null;
   }
 
   const handleResourceClick = (res: Resource) => {
-    if (
-      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
-      process.env.NEXT_PUBLIC_POSTHOG_HOST
-    ) {
-      posthog.capture("lesson_resource_clicked", {
-        resource_title: res.title,
-        resource_url: res.url,
-        resource_type: res.type,
-      });
-    }
+    trackLessonResourceClicked({
+      lessonSlug,
+      resourceTitle: res.title,
+      resourceType: res.type,
+      resourceUrl: res.url || "",
+    });
   };
 
   return (

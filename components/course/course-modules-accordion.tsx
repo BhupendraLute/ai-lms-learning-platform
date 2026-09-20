@@ -2,11 +2,11 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import posthog from "posthog-js";
 import { Play, ChevronDown } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getLessonsDuration } from "@/lib/duration";
+import { trackCourseModuleToggled } from "@/lib/analytics";
 
 export interface LessonItem {
   _id?: string;
@@ -60,50 +60,16 @@ export function CourseModulesAccordion({
       return next;
     });
 
-    if (
-      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
-      process.env.NEXT_PUBLIC_POSTHOG_HOST
-    ) {
-      posthog.capture("course_module_toggled", {
-        course_slug: courseSlug,
-        module_index: index + 1,
-        lesson_count: module.lessons?.length ?? 0,
-        expanded: willExpand,
-      });
-    }
+    trackCourseModuleToggled({
+      courseSlug,
+      moduleIndex: index + 1,
+      lessonCount: module.lessons?.length ?? 0,
+      expanded: willExpand,
+    });
   };
 
   const toggleModuleList = () => {
-    if (
-      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
-      process.env.NEXT_PUBLIC_POSTHOG_HOST
-    ) {
-      posthog.capture("course_modules_list_toggled", {
-        course_slug: courseSlug,
-        module_count: modules.length,
-        expanded: !showAll,
-      });
-    }
-
     setShowAll(!showAll);
-  };
-
-  const captureLessonSelected = (
-    moduleIndex: number,
-    lessonIndex: number,
-    isFreePreview: boolean
-  ) => {
-    if (
-      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
-      process.env.NEXT_PUBLIC_POSTHOG_HOST
-    ) {
-      posthog.capture("lesson_selected", {
-        course_slug: courseSlug,
-        module_index: moduleIndex + 1,
-        lesson_index: lessonIndex + 1,
-        is_free_preview: isFreePreview,
-      });
-    }
   };
 
   if (modules.length === 0) {
@@ -184,9 +150,6 @@ export function CourseModulesAccordion({
                     >
                       <Link
                         href={lessonHref}
-                        onClick={() =>
-                          captureLessonSelected(index, lIdx, Boolean(lesson.isFreePreview))
-                        }
                         className="flex items-center gap-3 min-w-0 flex-1 group-hover:text-[#D95D39] transition-colors"
                       >
                         <div className="w-6 h-6 rounded-full bg-white border border-[#E2E8F0] flex items-center justify-center shrink-0 shadow-xs group-hover:border-[#FED7AA]">

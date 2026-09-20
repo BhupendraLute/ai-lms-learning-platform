@@ -1,12 +1,11 @@
 import React from "react";
-import Link from "next/link";
 import {
   Navbar,
-  Button,
   ProgressBar,
   Breadcrumbs,
   NextjsIcon,
 } from "@/components/ui";
+import { MyLearningResumeButton } from "@/components/home/my-learning-resume-button";
 
 export const metadata = {
   title: "My Learning - AI-LMS",
@@ -51,11 +50,11 @@ export default function MyLearningPage() {
                 </p>
               </div>
             </div>
-            <Link href="/courses/nextjs-for-production">
-              <Button variant="primary" size="md">
-                Resume Learning
-              </Button>
-            </Link>
+            <MyLearningResumeButton
+              courseSlug="nextjs-for-production"
+              progressPercentage={35}
+              href="/courses/nextjs-for-production"
+            />
           </div>
 
           <div className="space-y-2">

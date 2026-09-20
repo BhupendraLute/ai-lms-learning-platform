@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { searchLearningPlatform, SearchOptions } from '@/sanity/lib/search'
+import { captureServerEvent } from '@/lib/analytics-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,6 +36,25 @@ export async function GET(request: NextRequest) {
       sort,
       limit,
     })
+
+    // Track server-side search event bound to request lifecycle
+    after(async () => {
+      try {
+        await captureServerEvent({
+          event: 'search_performed',
+          properties: {
+            query: cleanQuery,
+            total_results: results.stats.totalResults,
+            courses_count: results.stats.coursesCount,
+            video_results_count: results.stats.videoResultsCount,
+            lesson_results_count: results.stats.lessonResultsCount,
+            sort: sort || 'relevance',
+            has_results: results.stats.totalResults > 0,
+            source: 'api',
+          },
+        });
+      } catch {}
+    });
 
     return NextResponse.json(results, {
       status: 200,
