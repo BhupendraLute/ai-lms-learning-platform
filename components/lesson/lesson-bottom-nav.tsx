@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronLeft } from "@/components/ui/icons";
 import { formatLessonDuration } from "@/lib/duration";
-import posthog from "posthog-js";
+import { trackLessonCompleted } from "@/lib/analytics";
 
 interface NavLessonInfo {
   title: string;
@@ -40,18 +40,23 @@ export function LessonBottomNav({
     ? formatLessonDuration(nextLesson.duration)
     : "";
 
-  const handleNavClick = (direction: "prev" | "next", targetSlug: string) => {
-    if (
-      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
-      process.env.NEXT_PUBLIC_POSTHOG_HOST
-    ) {
-      posthog.capture("lesson_navigated", {
-        from_lesson_slug: currentLessonSlug,
-        to_lesson_slug: targetSlug,
-        direction,
-        course_slug: courseSlug,
-      });
-    }
+  const handleNextClick = () => {
+    trackLessonCompleted({
+      courseSlug,
+      lessonSlug: currentLessonSlug,
+      nextLessonSlug: nextSlug,
+      isCourseCompleted: false,
+      source: "bottom_nav_next",
+    });
+  };
+
+  const handleCompleteCourseClick = () => {
+    trackLessonCompleted({
+      courseSlug,
+      lessonSlug: currentLessonSlug,
+      isCourseCompleted: true,
+      source: "bottom_nav_complete",
+    });
   };
 
   return (
@@ -61,7 +66,6 @@ export function LessonBottomNav({
         <div className="flex items-center gap-4">
           <Link
             href={`/courses/${courseSlug}/lessons/${prevSlug}`}
-            onClick={() => handleNavClick("prev", prevSlug)}
             className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-[12px] border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-[#0F172A] text-sm font-medium transition-all shadow-xs cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -99,7 +103,7 @@ export function LessonBottomNav({
           </div>
           <Link
             href={`/courses/${courseSlug}/lessons/${nextSlug}`}
-            onClick={() => handleNavClick("next", nextSlug)}
+            onClick={handleNextClick}
             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-[12px] bg-[#EA580C] hover:bg-[#C24E2B] active:bg-[#AA3E1D] text-white text-sm font-medium transition-all shadow-xs hover:shadow cursor-pointer"
           >
             <span>Next Lesson</span>
@@ -109,6 +113,7 @@ export function LessonBottomNav({
       ) : (
         <Link
           href={`/courses/${courseSlug}`}
+          onClick={handleCompleteCourseClick}
           className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-[12px] bg-[#EA580C] hover:bg-[#C24E2B] text-white text-sm font-medium transition-all shadow-xs hover:shadow cursor-pointer"
         >
           <span>Complete Course</span>

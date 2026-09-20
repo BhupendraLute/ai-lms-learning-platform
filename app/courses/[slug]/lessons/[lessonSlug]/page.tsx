@@ -14,6 +14,7 @@ import {
   LessonTabs,
   LessonBottomNav,
   LessonBookmarkButton,
+  LessonViewTracker,
 } from "@/components/lesson";
 import { getLessonBySlug, getCourseBySlug, getAllCourses } from "@/sanity/lib/data";
 import { formatLessonDuration } from "@/lib/duration";
@@ -281,13 +282,26 @@ export default async function LessonDetailPage({
             </div>
           </div>
 
+          {/* Lesson View Tracker */}
+          <LessonViewTracker
+            courseSlug={courseSlug}
+            lessonSlug={lessonSlug}
+            lessonTitle={lesson.title}
+            moduleIndex={moduleIndex}
+            lessonIndex={lessonIndex}
+            startSeconds={startSeconds}
+          />
+
           {/* Video Player Embed */}
           <section aria-label="Lesson Video Player" className="mb-8">
             <LessonVideoPlayer
+              courseSlug={courseSlug}
+              lessonSlug={lessonSlug}
               videoUrl={lesson.videoUrl}
               poster={lesson.poster}
               title={lesson.title}
               startSeconds={startSeconds}
+              duration={lesson.duration}
             />
           </section>
 

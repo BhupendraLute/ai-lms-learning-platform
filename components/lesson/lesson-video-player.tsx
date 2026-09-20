@@ -1,16 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
 import { Play } from "@/components/ui/icons";
 import { imageUrl } from "@/sanity/lib/image";
+import { trackVideoPlayed, trackVideoWatchDepth } from "@/lib/analytics";
 import type { SanityImage } from "@/sanity/types";
 
 interface LessonVideoPlayerProps {
+  courseSlug?: string;
+  lessonSlug?: string;
   videoUrl?: string;
   poster?: SanityImage;
   title: string;
   startSeconds?: number;
+  duration?: string | number;
 }
 
 /**
@@ -32,18 +36,64 @@ function getVimeoId(url: string): string | null {
   return match && match[1] ? match[1] : null;
 }
 
+/**
+ * Detects the video provider type from the video URL
+ */
+function detectProvider(url?: string): "youtube" | "vimeo" | "bunny" | "generic" {
+  if (!url) return "generic";
+  const trimmed = url.toLowerCase();
+  if (trimmed.includes("youtu.be") || trimmed.includes("youtube.com")) return "youtube";
+  if (trimmed.includes("vimeo.com")) return "vimeo";
+  if (
+    trimmed.includes("mediadelivery.net") ||
+    trimmed.includes("bunnycdn.com") ||
+    trimmed.includes("b-cdn.net")
+  ) {
+    return "bunny";
+  }
+  return "generic";
+}
+
+/**
+ * Parses duration string (e.g. "12:45" or "10m") or number into total seconds.
+ */
+function parseDurationInSeconds(dur?: string | number): number {
+  if (typeof dur === "number") return dur;
+  if (!dur || typeof dur !== "string") return 600; // Default 10 minutes fallback
+  const parts = dur.split(":").map((p) => parseInt(p, 10));
+  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+    return parts[0] * 60 + parts[1];
+  }
+  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+  const match = dur.match(/(\d+)\s*m/i);
+  if (match) return parseInt(match[1], 10) * 60;
+  return 600;
+}
+
 export function LessonVideoPlayer({
+  courseSlug,
+  lessonSlug,
   videoUrl,
   poster,
   title,
   startSeconds = 0,
+  duration,
 }: LessonVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const provider = useMemo(() => detectProvider(videoUrl), [videoUrl]);
+  const totalDurationSeconds = useMemo(() => parseDurationInSeconds(duration), [duration]);
+
+  const hasTrackedPlay = useRef(false);
+  const milestonesFired = useRef<Set<number>>(new Set());
+  const secondsWatchedRef = useRef(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Derive poster image URL
   const posterUrl = poster ? imageUrl(poster) : null;
 
-  const embedSrc = React.useMemo(() => {
+  const embedSrc = useMemo(() => {
     if (!videoUrl) return null;
 
     const trimmedUrl = videoUrl.trim();
@@ -82,6 +132,74 @@ export function LessonVideoPlayer({
 
     return trimmedUrl;
   }, [videoUrl, startSeconds]);
+
+  // Video playback initiation & watch depth milestone monitor
+  useEffect(() => {
+    const isPlaybackActive = (isPlaying || startSeconds > 0) && Boolean(embedSrc);
+    if (!isPlaybackActive) return;
+
+    // 1. Fire video_played once per session/lesson
+    if (!hasTrackedPlay.current) {
+      hasTrackedPlay.current = true;
+      trackVideoPlayed({
+        courseSlug,
+        lessonSlug,
+        lessonTitle: title,
+        videoUrl,
+        startSeconds,
+        isAutoplay: startSeconds > 0 && !isPlaying,
+        provider,
+      });
+    }
+
+    // 2. Start watch depth tracking ticker
+    const MILESTONES: (25 | 50 | 75 | 90 | 100)[] = [25, 50, 75, 90, 100];
+    const TICK_INTERVAL_MS = 2000;
+
+    intervalRef.current = setInterval(() => {
+      secondsWatchedRef.current += TICK_INTERVAL_MS / 1000;
+      const currentSimulatedPosition = (startSeconds || 0) + secondsWatchedRef.current;
+      const currentPercentage = Math.min(
+        100,
+        Math.floor((currentSimulatedPosition / Math.max(totalDurationSeconds, 1)) * 100)
+      );
+
+      for (const milestone of MILESTONES) {
+        if (currentPercentage >= milestone && !milestonesFired.current.has(milestone)) {
+          milestonesFired.current.add(milestone);
+          trackVideoWatchDepth({
+            courseSlug,
+            lessonSlug,
+            lessonTitle: title,
+            depthPercentage: milestone,
+            secondsWatched: Math.round(secondsWatchedRef.current),
+            videoDurationSeconds: totalDurationSeconds,
+            provider,
+          });
+        }
+      }
+    }, TICK_INTERVAL_MS);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [
+    isPlaying,
+    startSeconds,
+    embedSrc,
+    courseSlug,
+    lessonSlug,
+    title,
+    videoUrl,
+    provider,
+    totalDurationSeconds,
+  ]);
+
+  const handlePlayButtonClick = () => {
+    setIsPlaying(true);
+  };
 
   // If autoplayed or user clicked play, show the iframe embed
   return (
@@ -123,7 +241,7 @@ export function LessonVideoPlayer({
           {/* Glowing Orange Play Button */}
           <button
             type="button"
-            onClick={() => setIsPlaying(true)}
+            onClick={handlePlayButtonClick}
             className="relative z-10 w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[#EA580C] hover:bg-[#F97316] active:scale-95 text-white flex items-center justify-center shadow-[0_0_40px_rgba(234,88,12,0.6)] transition-all duration-200 cursor-pointer"
             aria-label={`Play video: ${title}`}
           >

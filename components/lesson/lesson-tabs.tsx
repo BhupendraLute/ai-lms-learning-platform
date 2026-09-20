@@ -5,7 +5,7 @@ import { CheckCircle2, Lightbulb } from "@/components/ui/icons";
 import { LessonNotesPortableText } from "./lesson-notes-portable-text";
 import { LessonResources } from "./lesson-resources";
 import { cn } from "@/lib/utils";
-import posthog from "posthog-js";
+import { trackLessonTabSwitched } from "@/lib/analytics";
 import type { PortableTextBlock } from "@portabletext/react";
 import type { Resource } from "@/sanity/types";
 
@@ -61,15 +61,10 @@ export function LessonTabs({
 
   const handleTabChange = (tab: "content" | "notes") => {
     setActiveTab(tab);
-    if (
-      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
-      process.env.NEXT_PUBLIC_POSTHOG_HOST
-    ) {
-      posthog.capture("lesson_tab_changed", {
-        lesson_slug: lessonSlug,
-        tab,
-      });
-    }
+    trackLessonTabSwitched({
+      lessonSlug,
+      tab,
+    });
   };
 
   return (
@@ -168,7 +163,7 @@ export function LessonTabs({
           )}
 
           {/* Resources */}
-          <LessonResources resources={resources} />
+          <LessonResources resources={resources} lessonSlug={lessonSlug} />
         </div>
       )}
 

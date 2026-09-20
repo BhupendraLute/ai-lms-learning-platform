@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Bookmark } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
-import posthog from "posthog-js";
+import { trackLessonBookmarkToggled } from "@/lib/analytics";
 
 interface LessonBookmarkButtonProps {
   lessonSlug: string;
@@ -20,16 +20,11 @@ export function LessonBookmarkButton({
     const nextState = !isBookmarked;
     setIsBookmarked(nextState);
 
-    if (
-      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
-      process.env.NEXT_PUBLIC_POSTHOG_HOST
-    ) {
-      posthog.capture("lesson_bookmark_toggled", {
-        lesson_slug: lessonSlug,
-        lesson_title: lessonTitle,
-        bookmarked: nextState,
-      });
-    }
+    trackLessonBookmarkToggled({
+      lessonSlug,
+      lessonTitle,
+      bookmarked: nextState,
+    });
   };
 
   return (

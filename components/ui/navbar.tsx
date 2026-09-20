@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import posthog from "posthog-js";
 import {
   ClerkLoaded,
   SignInButton,
@@ -12,17 +11,13 @@ import {
 } from "@clerk/nextjs";
 import { AiLmsLogo, Bell, Menu, X } from "./icons";
 import { cn } from "@/lib/utils";
+import { trackAuthStarted } from "@/lib/analytics";
 
 function captureAuthStarted(
   event: "sign_in_started" | "sign_up_started",
   source: "desktop_navigation" | "mobile_navigation"
 ) {
-  if (
-    process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
-    process.env.NEXT_PUBLIC_POSTHOG_HOST
-  ) {
-    posthog.capture(event, { source });
-  }
+  trackAuthStarted({ event, source });
 }
 
 export interface NavItem {

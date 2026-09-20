@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "@/components/ui/icons";
+import { trackSearchPerformed } from "@/lib/analytics";
 
 export function HeroSearchBar() {
   const router = useRouter();
@@ -26,6 +27,10 @@ export function HeroSearchBar() {
     e.preventDefault();
     const clean = query.trim();
     if (clean) {
+      trackSearchPerformed({
+        query: clean,
+        source: "hero_search",
+      });
       router.push(`/search?q=${encodeURIComponent(clean)}`);
     } else {
       router.push("/search");

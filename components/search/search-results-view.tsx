@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import posthog from "posthog-js";
+import { trackSearchPerformed } from "@/lib/analytics";
 import {
   Navbar,
   Search,
@@ -39,18 +39,15 @@ export function SearchResultsView({
 
   // Track search performed in PostHog
   useEffect(() => {
-    if (
-      initialQuery &&
-      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
-      process.env.NEXT_PUBLIC_POSTHOG_HOST
-    ) {
-      posthog.capture("search_performed", {
+    if (initialQuery) {
+      trackSearchPerformed({
         query: initialQuery,
-        total_results: initialData.stats.totalResults,
-        courses_count: initialData.stats.coursesCount,
-        video_results_count: initialData.stats.videoResultsCount,
-        lesson_results_count: initialData.stats.lessonResultsCount,
+        totalResults: initialData.stats.totalResults,
+        coursesCount: initialData.stats.coursesCount,
+        videoResultsCount: initialData.stats.videoResultsCount,
+        lessonResultsCount: initialData.stats.lessonResultsCount,
         sort,
+        source: "search_page",
       });
     }
   }, [initialQuery, initialData.stats, sort]);
@@ -212,11 +209,25 @@ export function SearchResultsView({
         {/* Results List */}
         {totalCount > 0 ? (
           <div className="flex flex-col gap-4 sm:gap-5">
-            {unifiedResults.map((item) => {
+            {unifiedResults.map((item, index) => {
               if (item.type === "video") {
-                return <VideoResultCard key={item.id} result={item} query={initialQuery} />;
+                return (
+                  <VideoResultCard
+                    key={item.id}
+                    result={item}
+                    query={initialQuery}
+                    position={index + 1}
+                  />
+                );
               }
-              return <LessonResultCard key={item.id} result={item} query={initialQuery} />;
+              return (
+                <LessonResultCard
+                  key={item.id}
+                  result={item}
+                  query={initialQuery}
+                  position={index + 1}
+                />
+              );
             })}
           </div>
         ) : (

@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import posthog from "posthog-js";
+import { trackSearchResultOpened } from "@/lib/analytics";
 import { Check, ArrowUpRight, ChevronRight } from "@/components/ui/icons";
 import { CourseIconBadge } from "./course-icon-badge";
 import type { SearchResultLesson } from "@/sanity/lib/search";
@@ -10,22 +10,22 @@ import type { SearchResultLesson } from "@/sanity/lib/search";
 interface LessonResultCardProps {
   result: SearchResultLesson;
   query?: string;
+  position?: number;
 }
 
-export function LessonResultCard({ result, query = "" }: LessonResultCardProps) {
+export function LessonResultCard({ result, query = "", position }: LessonResultCardProps) {
   const handleClick = () => {
-    if (
-      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
-      process.env.NEXT_PUBLIC_POSTHOG_HOST
-    ) {
-      posthog.capture("search_result_clicked", {
-        query,
-        result_type: "lesson",
-        lesson_slug: result.lessonSlug,
-        course_slug: result.courseSlug,
-        lesson_title: result.lessonTitle,
-      });
-    }
+    trackSearchResultOpened({
+      query,
+      resultType: "lesson",
+      matchType: "topic",
+      lessonSlug: result.lessonSlug,
+      lessonTitle: result.lessonTitle,
+      courseSlug: result.courseSlug,
+      courseTitle: result.courseTitle,
+      destinationUrl: result.lessonUrl,
+      position,
+    });
   };
 
   // Fallback key points if not present in content

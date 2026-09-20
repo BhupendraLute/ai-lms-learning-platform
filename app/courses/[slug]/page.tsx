@@ -1,5 +1,4 @@
 import React from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
@@ -9,11 +8,11 @@ import {
   Clock,
   FileText,
   Users,
-  Bookmark,
-  ArrowRight,
 } from "@/components/ui";
 import { getCourseBySlug, getCourseSlugs } from "@/sanity/lib/data";
 import { CourseHeroCover } from "@/components/course/course-hero-cover";
+import { CourseHeroActions } from "@/components/course/course-hero-actions";
+import { CourseViewTracker } from "@/components/course/course-view-tracker";
 import { OutcomeIcon } from "@/components/course/outcome-icon";
 import { CourseModulesAccordion } from "@/components/course/course-modules-accordion";
 import { CourseBottomProgress } from "@/components/course/course-bottom-progress";
@@ -197,27 +196,23 @@ export default async function CourseDetailPage({ params }: PageProps) {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4 pt-1">
-                <Link
-                  href={continueHref}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-[12px] bg-[#D95D39] hover:bg-[#C24E2B] active:bg-[#AA3E1D] text-white text-sm md:text-base font-medium shadow-sm hover:shadow transition-all duration-150 cursor-pointer"
-                >
-                  <span>Continue Learning</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-[12px] border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-[#0F172A] text-sm md:text-base font-medium shadow-xs transition-all duration-150 cursor-pointer"
-                  aria-label="Bookmark this course"
-                >
-                  <Bookmark className="w-4 h-4 text-[#0F172A]" strokeWidth={2} />
-                  <span>Bookmark</span>
-                </button>
-              </div>
+              <CourseHeroActions
+                courseSlug={currentSlug}
+                continueHref={continueHref}
+              />
             </div>
           </div>
         </section>
+
+        {/* Course View Tracker */}
+        <CourseViewTracker
+          courseSlug={currentSlug}
+          courseTitle={course.title}
+          level={course.level}
+          moduleCount={moduleCount}
+          duration={totalDuration}
+          studentCount={course.studentCount}
+        />
 
         {/* What You'll Learn Section */}
         <section className="mb-12 sm:mb-16">
@@ -269,6 +264,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
 
         {/* Floating Bottom Progress Bar */}
         <CourseBottomProgress
+          courseSlug={currentSlug}
           percentage={35}
           continueHref={continueHref}
           className="mt-8 mb-4"
