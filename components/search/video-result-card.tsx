@@ -67,15 +67,20 @@ export function VideoResultCard({ result, query = "", position }: VideoResultCar
           </div>
 
           {/* Bottom-right Duration / Timestamp Badge */}
-          <div className="absolute bottom-2.5 right-2.5 bg-black/85 backdrop-blur-xs text-white text-[11px] font-mono font-medium px-2 py-0.5 rounded-md shadow-sm">
-            {result.formattedTimestamp !== "00:00" ? result.formattedTimestamp : result.duration}
+          <div className="absolute bottom-2.5 right-2.5 bg-black/85 backdrop-blur-xs text-white text-[11px] font-mono font-medium px-2 py-0.5 rounded-md shadow-sm flex items-center gap-1.5">
+            <span>{result.formattedTimestamp !== "00:00" ? result.formattedTimestamp : "0:00"}</span>
+            {result.clipLength && (
+              <span className="text-slate-400 font-sans text-[10px]">
+                ({result.clipLength})
+              </span>
+            )}
           </div>
         </div>
 
         {/* Right: Metadata & Details */}
         <div className="flex-1 flex flex-col justify-between min-w-0">
           <div>
-            {/* Top row: Course Name + VIDEO Badge */}
+            {/* Top row: Course Name + Match Type Badge */}
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <div className="flex items-center gap-2 min-w-0">
                 <CourseIconBadge iconType={result.courseIcon} courseTitle={result.courseTitle} size={18} />
@@ -84,7 +89,7 @@ export function VideoResultCard({ result, query = "", position }: VideoResultCar
                 </span>
               </div>
               <span className="shrink-0 text-[11px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-md bg-[#FFF1F2] text-[#E11D48] border border-[#FFE4E6]">
-                VIDEO
+                {result.matchType === "chapter" ? "CHAPTER" : result.matchType === "transcript" ? "TRANSCRIPT" : "VIDEO"}
               </span>
             </div>
 

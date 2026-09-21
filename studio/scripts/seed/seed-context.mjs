@@ -56,20 +56,24 @@ if (!token) {
   process.exit(1);
 }
 
-const instructionsContent = `### Content Model & Schema Relationships
-- Courses (\`course\`): Top-level entities containing metadata, instructor, category, and an array of embedded \`modules[]\`.
-- Modules: Embedded objects inside courses (\`course.modules[]\`), containing \`title\`, \`summary\`, and an array of lesson references (\`lessons[]._ref\`). Module numbers (e.g. Module 5) are derived from array index + 1.
-- Lessons (\`lesson\`): Standalone documents with \`title\`, \`slug\`, \`videoUrl\`, \`duration\`, \`poster\`, \`isFreePreview\`, \`keyPoints\`, \`proTip\`, \`notes\` (Portable Text), and \`resources\`.
-- Lesson to Course Resolution: Lessons do not store a parent course reference. Resolve the parent course and module via reverse reference: \`*[_type == "course" && references(^._id)][0]\`.
-- Video Intelligence (\`video\`): Standalone documents keyed by video ID with \`url\`, \`chapters[]\` ({ startSeconds, label }), and \`chunks[]\` ({ startSeconds, text }).
+const instructionsContent = `### Rules
+- Always filter out drafts: use !(_id in path("drafts.**")).
+- Ground all facts strictly in database results. Never invent or assume courses, lessons, durations, or timestamps.
+- Video documents are an internal lookup only. Never return video documents standalone; always associate them with their parent lesson and course.
 
-### Search & Timestamp Rules
-- Grounding: Only return facts, lessons, courses, and timestamps that exist in the database. Never hallucinate lessons or timestamps.
-- Two-Stage Video Timestamp Resolution:
-  1. Primary: Match query tokens against \`video.chapters[].label\`. Chapter labels are concise and accurate.
-  2. Fallback: Match against \`video.chunks[].text\` only if no chapter matches.
-- Portable Text Search: Match against plain text using \`pt::text(notes)\` or wildcard token matching \`notes[].children[].text match $term\`.
-- Ranking: Exact title matches rank highest, followed by lesson notes/key points matches, followed by video chapter moments, followed by transcript chunk matches.`;
+### Schema Relationships
+- Course Modules: Modules are embedded objects inside courses (\`course.modules[]\`), not standalone documents. Module numbers (e.g., Module 5) and lesson numbers (e.g., Lesson 5.1) are derived from array index order + 1, not stored.
+- Lesson to Course Resolution: Lessons do not store a parent course pointer. To resolve the parent course and module for a lesson, use reverse references: \`*[_type == "course" && references(^._id)][0]\`.
+- Video Intelligence: Video documents (\`_type == "video"\`) are keyed by video URL (\`lesson.videoUrl == video.url\`). They contain \`chapters[]\` ({ startSeconds, label }) and \`chunks[]\` ({ startSeconds, text }).
+
+### Two-Stage Timestamp Resolution
+1. Stage 1 (Chapters Primary): Match query tokens against \`video.chapters[].label\`. Chapter labels are clean, curated markers and take priority.
+2. Stage 2 (Transcript Chunks Fallback): If and only if no chapters match for a lesson, match against \`video.chunks[].text\` (retrieve only top 2-3 matched chunks per video).
+
+### Text Search & Query Patterns
+- Wildcard Matching: Always tokenize keywords and use wildcard OR patterns (e.g., \`*keyword1* || *keyword2*\`), never full phrases as single strings.
+- Portable Text: Match notes using plain text projection: \`pt::text(notes) match $term\`.
+- Ranking Specificity: Exact title concept matches rank highest, followed by key points, chapter labels, notes text, and transcript chunks.`;
 
 const agentContextDoc = {
   _id: 'sanity.agentContext.default',

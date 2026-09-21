@@ -7,6 +7,7 @@ import {
 import { imageUrl } from './image'
 import type { SanityImageSource } from '@sanity/image-url'
 import { createOpenAI } from '@ai-sdk/openai'
+export * from './search-agent-config'
 
 export function getSlugString(slug?: { current?: string } | string | null): string {
   if (!slug) return ''
@@ -97,24 +98,46 @@ export function formatSeconds(seconds: number): string {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Convert string duration (e.g. "12:45" or "10m") to seconds
+// Convert string duration (e.g. "12:45", "1h 15m", or "10m") to seconds
 export function parseDurationToSeconds(durationStr: string | number): number {
   if (typeof durationStr === 'number') return durationStr;
   if (!durationStr || typeof durationStr !== 'string') return 600;
-  const parts = durationStr.split(':');
-  if (parts.length === 2) {
-    const mins = parseInt(parts[0], 10) || 0;
-    const secs = parseInt(parts[1], 10) || 0;
-    return mins * 60 + secs;
+  const str = durationStr.trim();
+  if (!str) return 600;
+
+  // Pure numeric string
+  if (/^\d+$/.test(str)) {
+    return parseInt(str, 10);
   }
-  if (parts.length === 3) {
-    const hrs = parseInt(parts[0], 10) || 0;
-    const mins = parseInt(parts[1], 10) || 0;
-    const secs = parseInt(parts[2], 10) || 0;
-    return hrs * 3600 + mins * 60 + secs;
+
+  // Colon-separated format ("MM:SS" or "HH:MM:SS")
+  if (str.includes(':')) {
+    const parts = str.split(':');
+    if (parts.length === 2) {
+      const mins = parseInt(parts[0], 10) || 0;
+      const secs = parseInt(parts[1], 10) || 0;
+      return mins * 60 + secs;
+    }
+    if (parts.length === 3) {
+      const hrs = parseInt(parts[0], 10) || 0;
+      const mins = parseInt(parts[1], 10) || 0;
+      const secs = parseInt(parts[2], 10) || 0;
+      return hrs * 3600 + mins * 60 + secs;
+    }
   }
-  const match = durationStr.match(/(\d+)\s*m(?:in)?/i);
-  if (match) return parseInt(match[1], 10) * 60;
+
+  // Combined unit formats (e.g. "1h 15m", "45m", "1h", "30s", "10min")
+  let totalSecs = 0;
+  const hoursMatch = str.match(/(\d+)\s*h/i);
+  const minsMatch = str.match(/(\d+)\s*m/i);
+  const secsMatch = str.match(/(\d+)\s*s/i);
+
+  if (hoursMatch) totalSecs += parseInt(hoursMatch[1], 10) * 3600;
+  if (minsMatch) totalSecs += parseInt(minsMatch[1], 10) * 60;
+  if (secsMatch) totalSecs += parseInt(secsMatch[1], 10);
+
+  if (totalSecs > 0) return totalSecs;
+
   return 600;
 }
 
@@ -173,6 +196,7 @@ export interface VideoChapterQueryResult {
   url?: string;
   title?: string;
   duration?: number;
+  allChapters?: VideoChapterMatch[];
   matchedChapters?: VideoChapterMatch[];
   lesson?: MatchedLessonQueryResult;
 }
@@ -336,8 +360,9 @@ export async function searchLearningPlatform(
   const videoResultsMap = new Map<string, SearchResultVideo>();
   const lessonResultsMap = new Map<string, SearchResultLesson>();
   const touchedCourses = new Set<string>();
+  const lessonsWithChapterMatches = new Set<string>();
 
-  // 1. STAGE 1: Match Video Chapters (Primary Timestamp Resolution)
+  // 1. STAGE 1: Match Video Chapters (Primary Timestamp Resolution - Clean Markers)
   if (Array.isArray(videoChaptersResult)) {
     for (const item of videoChaptersResult) {
       if (!item.lesson) continue;
@@ -345,19 +370,39 @@ export async function searchLearningPlatform(
       if (!loc) continue;
 
       const matchedChapters = item.matchedChapters || [];
+      const allChapters = item.allChapters || item.matchedChapters || [];
+      const sortedChapters = [...allChapters]
+        .filter((c) => typeof c.startSeconds === 'number')
+        .sort((a, b) => (a.startSeconds || 0) - (b.startSeconds || 0));
+
+      const lessonSlug = getSlugString(item.lesson.slug);
+
       for (const ch of matchedChapters) {
         const startSeconds = typeof ch.startSeconds === 'number' ? ch.startSeconds : 0;
         const formattedTimestamp = formatSeconds(startSeconds);
-        const lessonSlug = getSlugString(item.lesson.slug);
         const thumbUrl = imageUrl(item.lesson.poster as SanityImageSource) || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`;
+
+        // Calculate clip duration from interval to next chapter or video duration
+        let clipLength: string | undefined;
+        const chIdx = sortedChapters.findIndex((c) => c.startSeconds === startSeconds);
+        if (chIdx !== -1 && chIdx < sortedChapters.length - 1) {
+          const nextCh = sortedChapters[chIdx + 1];
+          if (typeof nextCh.startSeconds === 'number' && nextCh.startSeconds > startSeconds) {
+            clipLength = formatSeconds(nextCh.startSeconds - startSeconds);
+          }
+        } else if (typeof item.duration === 'number' && item.duration > startSeconds) {
+          clipLength = formatSeconds(item.duration - startSeconds);
+        } else if (item.lesson.duration) {
+          clipLength = item.lesson.duration;
+        }
 
         // Calculate score
         const labelLower = (ch.label || '').toLowerCase();
-        let score = 50;
-        if (labelLower === cleanQuery) score += 50;
-        else if (labelLower.includes(cleanQuery)) score += 30;
+        let score = 55;
+        if (labelLower === cleanQuery) score += 55;
+        else if (labelLower.includes(cleanQuery)) score += 35;
         searchTokens.forEach((tok) => {
-          if (labelLower.includes(tok)) score += 10;
+          if (labelLower.includes(tok)) score += 12;
         });
 
         const key = `${item.lesson._id}-ch-${startSeconds}`;
@@ -373,6 +418,7 @@ export async function searchLearningPlatform(
           lessonNumber: loc.lessonNumber,
           thumbnailUrl: thumbUrl,
           duration: item.lesson.duration || '10:00',
+          clipLength,
           startSeconds,
           formattedTimestamp,
           description: ch.label || `Learn ${item.lesson.title} in depth.`,
@@ -381,12 +427,15 @@ export async function searchLearningPlatform(
           score,
         });
 
+        lessonsWithChapterMatches.add(lessonSlug);
+        lessonsWithChapterMatches.add(item.lesson._id);
         touchedCourses.add(loc.courseSlug);
       }
     }
   }
 
   // 2. STAGE 2: Match Video Transcript Chunks (Fallback Timestamp Resolution)
+  // Only executed for lessons where no chapter matched to eliminate noisy duplicates (Section 7)
   if (Array.isArray(videoChunksResult)) {
     for (const item of videoChunksResult) {
       if (!item.lesson) continue;
@@ -395,11 +444,10 @@ export async function searchLearningPlatform(
 
       const lessonSlug = getSlugString(item.lesson.slug);
 
-      // If we already have chapter matches for this lesson, skip chunk noise (Section 7 Two-Stage rule)
-      const hasChapterMatch = Array.from(videoResultsMap.values()).some(
-        (vr) => vr.lessonSlug === lessonSlug && vr.matchType === 'chapter'
-      );
-      if (hasChapterMatch) continue;
+      // Enforce two-stage rule: Skip transcript chunks if this lesson has chapter hits
+      if (lessonsWithChapterMatches.has(lessonSlug) || lessonsWithChapterMatches.has(item.lesson._id)) {
+        continue;
+      }
 
       const matchedChunks = item.matchedChunks || [];
       for (const chunk of matchedChunks) {
@@ -407,11 +455,16 @@ export async function searchLearningPlatform(
         const formattedTimestamp = formatSeconds(startSeconds);
         const thumbUrl = imageUrl(item.lesson.poster as SanityImageSource) || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`;
 
+        // Calculate chunk clip length
+        const totalDur = typeof item.duration === 'number' ? item.duration : parseDurationToSeconds(item.lesson.duration || 600);
+        const remaining = Math.max(30, totalDur - startSeconds);
+        const clipLength = formatSeconds(Math.min(60, remaining));
+
         const chunkLower = (chunk.text || '').toLowerCase();
-        let score = 30;
+        let score = 35;
         if (chunkLower.includes(cleanQuery)) score += 20;
         searchTokens.forEach((tok) => {
-          if (chunkLower.includes(tok)) score += 5;
+          if (chunkLower.includes(tok)) score += 6;
         });
 
         const key = `${item.lesson._id}-chunk-${startSeconds}`;
@@ -428,6 +481,7 @@ export async function searchLearningPlatform(
             lessonNumber: loc.lessonNumber,
             thumbnailUrl: thumbUrl,
             duration: item.lesson.duration || '10:00',
+            clipLength,
             startSeconds,
             formattedTimestamp,
             description: chunk.text || `Discussion in ${item.lesson.title}.`,

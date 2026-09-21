@@ -311,6 +311,55 @@ export function LessonVideoPlayer({
     };
   }, [provider, triggerVideoPlayed, checkMilestones]);
 
+  // Handle dynamic seek commands when startSeconds changes
+  useEffect(() => {
+    if (startSeconds > 0) {
+      triggerVideoPlayed();
+
+      const target = iframeRef.current?.contentWindow;
+      if (target) {
+        try {
+          if (provider === "youtube") {
+            target.postMessage(
+              JSON.stringify({
+                event: "command",
+                func: "seekTo",
+                args: [Math.floor(startSeconds), true],
+              }),
+              "*"
+            );
+            target.postMessage(
+              JSON.stringify({ event: "command", func: "playVideo" }),
+              "*"
+            );
+          } else if (provider === "vimeo") {
+            target.postMessage(
+              JSON.stringify({
+                method: "setCurrentTime",
+                value: Math.floor(startSeconds),
+              }),
+              "*"
+            );
+            target.postMessage(
+              JSON.stringify({ method: "play" }),
+              "*"
+            );
+          } else if (provider === "bunny") {
+            target.postMessage(
+              JSON.stringify({
+                action: "seek",
+                time: Math.floor(startSeconds),
+              }),
+              "*"
+            );
+          }
+        } catch {
+          // Ignore cross-origin postMessage errors
+        }
+      }
+    }
+  }, [startSeconds, provider, triggerVideoPlayed]);
+
   // Periodic polling for providers requiring command polls while active
   useEffect(() => {
     const isVisible = isPlaying || startSeconds > 0;
