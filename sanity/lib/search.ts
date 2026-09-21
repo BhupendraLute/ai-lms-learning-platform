@@ -98,24 +98,46 @@ export function formatSeconds(seconds: number): string {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Convert string duration (e.g. "12:45" or "10m") to seconds
+// Convert string duration (e.g. "12:45", "1h 15m", or "10m") to seconds
 export function parseDurationToSeconds(durationStr: string | number): number {
   if (typeof durationStr === 'number') return durationStr;
   if (!durationStr || typeof durationStr !== 'string') return 600;
-  const parts = durationStr.split(':');
-  if (parts.length === 2) {
-    const mins = parseInt(parts[0], 10) || 0;
-    const secs = parseInt(parts[1], 10) || 0;
-    return mins * 60 + secs;
+  const str = durationStr.trim();
+  if (!str) return 600;
+
+  // Pure numeric string
+  if (/^\d+$/.test(str)) {
+    return parseInt(str, 10);
   }
-  if (parts.length === 3) {
-    const hrs = parseInt(parts[0], 10) || 0;
-    const mins = parseInt(parts[1], 10) || 0;
-    const secs = parseInt(parts[2], 10) || 0;
-    return hrs * 3600 + mins * 60 + secs;
+
+  // Colon-separated format ("MM:SS" or "HH:MM:SS")
+  if (str.includes(':')) {
+    const parts = str.split(':');
+    if (parts.length === 2) {
+      const mins = parseInt(parts[0], 10) || 0;
+      const secs = parseInt(parts[1], 10) || 0;
+      return mins * 60 + secs;
+    }
+    if (parts.length === 3) {
+      const hrs = parseInt(parts[0], 10) || 0;
+      const mins = parseInt(parts[1], 10) || 0;
+      const secs = parseInt(parts[2], 10) || 0;
+      return hrs * 3600 + mins * 60 + secs;
+    }
   }
-  const match = durationStr.match(/(\d+)\s*m(?:in)?/i);
-  if (match) return parseInt(match[1], 10) * 60;
+
+  // Combined unit formats (e.g. "1h 15m", "45m", "1h", "30s", "10min")
+  let totalSecs = 0;
+  const hoursMatch = str.match(/(\d+)\s*h/i);
+  const minsMatch = str.match(/(\d+)\s*m/i);
+  const secsMatch = str.match(/(\d+)\s*s/i);
+
+  if (hoursMatch) totalSecs += parseInt(hoursMatch[1], 10) * 3600;
+  if (minsMatch) totalSecs += parseInt(minsMatch[1], 10) * 60;
+  if (secsMatch) totalSecs += parseInt(secsMatch[1], 10);
+
+  if (totalSecs > 0) return totalSecs;
+
   return 600;
 }
 
