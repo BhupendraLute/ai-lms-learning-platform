@@ -320,6 +320,11 @@ export const SEARCH_VIDEO_CHAPTERS_QUERY = defineQuery(`
     url,
     title,
     duration,
+    "allChapters": chapters[] {
+      _key,
+      startSeconds,
+      label
+    },
     "matchedChapters": chapters[label match $term || label match $wildcard] {
       _key,
       startSeconds,
